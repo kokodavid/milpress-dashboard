@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 final selectedIndexProvider = StateProvider<int>((ref) => 0);
 
@@ -72,82 +73,122 @@ class DashboardOverview extends StatelessWidget {
 						'Dashboard Overview',
 						style: Theme.of(context).textTheme.headlineMedium,
 					),
-					const SizedBox(height: 24),
-					Expanded(
-						child: GridView.count(
-							crossAxisCount: 4,
-							crossAxisSpacing: 16,
-							mainAxisSpacing: 16,
-							children: [
-								_buildMetricCard(
-									context,
-									'Total Users',
-									'1,234',
-									Icons.people,
-									Colors.blue,
+								const SizedBox(height: 24),
+								Expanded(
+									child: LayoutBuilder(
+										builder: (context, constraints) {
+															int crossAxisCount = 4;
+															if (constraints.maxWidth < 600) {
+																crossAxisCount = 1;
+															} else if (constraints.maxWidth < 900) {
+																crossAxisCount = 2;
+															} else if (constraints.maxWidth < 1200) {
+																crossAxisCount = 3;
+															}
+
+											return GridView.count(
+												crossAxisCount: crossAxisCount,
+												crossAxisSpacing: 16,
+												mainAxisSpacing: 16,
+												children: [
+													_buildQuickActionCard(
+														context,
+														title: 'Courses',
+														subtitle: 'Create and manage courses',
+														icon: Icons.menu_book_outlined,
+														color: Colors.blue,
+														onTap: () => context.go('/courses'),
+														ctaText: 'Open',
+													),
+													_buildQuickActionCard(
+														context,
+														title: 'Modules',
+														subtitle: 'Manage course modules',
+														icon: Icons.view_module_outlined,
+														color: Colors.green,
+														onTap: () => context.go('/modules'),
+														ctaText: 'Open',
+													),
+													_buildQuickActionCard(
+														context,
+														title: 'Lessons',
+														subtitle: 'Create and organize lessons',
+														icon: Icons.menu_book,
+														color: Colors.orange,
+														onTap: () => context.go('/lessons'),
+														ctaText: 'Open',
+													),
+													_buildQuickActionCard(
+														context,
+														title: 'Quizzes',
+														subtitle: 'Manage lesson quizzes',
+														icon: Icons.quiz_outlined,
+														color: Colors.purple,
+														onTap: () => context.go('/quizzes'),
+														ctaText: 'Open',
+													),
+												],
+											);
+										},
+									),
 								),
-								_buildMetricCard(
-									context,
-									'Revenue',
-									'\$45,678',
-									Icons.attach_money,
-									Colors.green,
-								),
-								_buildMetricCard(
-									context,
-									'Orders',
-									'567',
-									Icons.shopping_cart,
-									Colors.orange,
-								),
-								_buildMetricCard(
-									context,
-									'Growth',
-									'+12.5%',
-									Icons.trending_up,
-									Colors.purple,
-								),
-							],
-						),
-					),
 				],
 			),
 		);
 	}
 
-	Widget _buildMetricCard(
-		BuildContext context,
-		String title,
-		String value,
-		IconData icon,
-		Color color,
-	) {
-		return Card(
-			elevation: 2,
-			child: Padding(
-				padding: const EdgeInsets.all(16.0),
-				child: Column(
-					mainAxisAlignment: MainAxisAlignment.center,
-					children: [
-						Icon(icon, size: 32, color: color),
-						const SizedBox(height: 8),
-						Text(
-							value,
-							style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-								fontWeight: FontWeight.bold,
+				Widget _buildQuickActionCard(
+					BuildContext context, {
+					required String title,
+					required String subtitle,
+					required IconData icon,
+					required Color color,
+					required VoidCallback onTap,
+					String ctaText = 'Open',
+				}) {
+					return Card(
+						clipBehavior: Clip.antiAlias,
+						elevation: 2,
+						child: InkWell(
+							onTap: onTap,
+							child: Padding(
+								padding: const EdgeInsets.all(16.0),
+								child: Column(
+									crossAxisAlignment: CrossAxisAlignment.start,
+									children: [
+										Row(
+											children: [
+																	CircleAvatar(
+																		// Using withAlpha to avoid deprecated withOpacity; 0.15 * 255 ≈ 38
+																		backgroundColor: color.withAlpha(38),
+													child: Icon(icon, color: color),
+												),
+												const Spacer(),
+												TextButton.icon(
+													onPressed: onTap,
+													icon: const Icon(Icons.arrow_forward),
+													label: Text(ctaText),
+												),
+											],
+										),
+										const SizedBox(height: 12),
+										Text(
+											title,
+											style: Theme.of(context).textTheme.titleLarge,
+										),
+										const SizedBox(height: 6),
+										Text(
+											subtitle,
+											style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+														color: Colors.grey[700],
+													),
+										),
+									],
+								),
 							),
 						),
-						Text(
-							title,
-							style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-								color: Colors.grey[600],
-							),
-						),
-					],
-				),
-			),
-		);
-	}
+					);
+				}
 }
 
 class AnalyticsPage extends StatelessWidget {

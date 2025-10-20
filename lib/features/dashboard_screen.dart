@@ -2,62 +2,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+// Sidebar is now handled globally by AppShell
 
 final selectedIndexProvider = StateProvider<int>((ref) => 0);
 
-class DashboardScreen extends ConsumerStatefulWidget {
+
+class DashboardScreen extends ConsumerWidget {
 	const DashboardScreen({super.key});
 
 	@override
-	ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-	final List<Widget> _pages = const [
-		DashboardOverview(),
-		AnalyticsPage(),
-		SettingsPage(),
-	];
-
-	@override
-	Widget build(BuildContext context) {
-		final selectedIndex = ref.watch(selectedIndexProvider);
-		return Scaffold(
-			body: Row(
-				children: [
-					NavigationRail(
-						selectedIndex: selectedIndex,
-						onDestinationSelected: (index) {
-							ref.read(selectedIndexProvider.notifier).state = index;
-						},
-						labelType: NavigationRailLabelType.all,
-						destinations: const [
-							NavigationRailDestination(
-								icon: Icon(Icons.dashboard_outlined),
-								selectedIcon: Icon(Icons.dashboard),
-								label: Text('Dashboard'),
-							),
-							NavigationRailDestination(
-								icon: Icon(Icons.analytics_outlined),
-								selectedIcon: Icon(Icons.analytics),
-								label: Text('Analytics'),
-							),
-							NavigationRailDestination(
-								icon: Icon(Icons.settings_outlined),
-								selectedIcon: Icon(Icons.settings),
-								label: Text('Settings'),
-							),
-						],
-					),
-					const VerticalDivider(thickness: 1, width: 1),
-					Expanded(
-						child: _pages[selectedIndex],
-					),
-				],
-			),
-		);
+	Widget build(BuildContext context, WidgetRef ref) {
+		// Just show the dashboard overview content. Sidebar is handled by AppShell.
+		return const DashboardOverview();
 	}
 }
+
+
 
 class DashboardOverview extends StatelessWidget {
 	const DashboardOverview({super.key});

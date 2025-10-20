@@ -8,7 +8,8 @@ class Course {
   final String? soundUrlOverview;
   final String? soundUrlDetail;
   final bool locked;
-  final Map<String, dynamic>? modules; // jsonb
+  // jsonb column may contain either an object or an array; keep this flexible
+  final Object? modules;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -22,7 +23,7 @@ class Course {
     this.soundUrlOverview,
     this.soundUrlDetail,
     this.locked = false,
-    this.modules,
+  this.modules,
     this.createdAt,
     this.updatedAt,
   });
@@ -38,7 +39,8 @@ class Course {
       soundUrlOverview: json['sound_url_overview'] as String?,
       soundUrlDetail: json['sound_url_detail'] as String?,
       locked: (json['locked'] as bool?) ?? false,
-      modules: json['modules'] as Map<String, dynamic>?,
+      // Don't force-cast to Map to avoid type errors when the JSONB is an array
+      modules: json['modules'],
       createdAt: _toDateTime(json['created_at']),
       updatedAt: _toDateTime(json['updated_at']),
     );
@@ -77,7 +79,7 @@ class Course {
     String? soundUrlOverview,
     String? soundUrlDetail,
     bool? locked,
-    Map<String, dynamic>? modules,
+    Object? modules,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -107,7 +109,7 @@ class CourseCreate {
   final String? soundUrlOverview;
   final String? soundUrlDetail;
   final bool locked;
-  final Map<String, dynamic>? modules;
+  final Object? modules;
 
   CourseCreate({
     required this.title,
@@ -145,7 +147,7 @@ class CourseUpdate {
   final String? soundUrlOverview;
   final String? soundUrlDetail;
   final bool? locked;
-  final Map<String, dynamic>? modules;
+  final Object? modules;
 
   CourseUpdate({
     this.title,

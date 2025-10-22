@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:milpress_dashboard/features/auth/admin_profile.dart';
 
-class AppSidebar extends StatelessWidget {
+class AppSidebar extends ConsumerWidget {
   final String selectedRoute;
   const AppSidebar({super.key, required this.selectedRoute});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       width: 240,
       color: const Color(0xFFF7F7FA),
@@ -40,25 +43,19 @@ class AppSidebar extends StatelessWidget {
               children: [
                 _SidebarSectionLabel('OVERVIEW'),
                 _SidebarNavTile(
-                  icon: Icons.dashboard,
-                  label: 'Dashboard',
+                  icon: FontAwesomeIcons.house,
+                  label: 'Overview',
                   selected: selectedRoute == '/dashboard',
                   onTap: () => context.go('/dashboard'),
                 ),
                 _SidebarNavTile(
-                  icon: Icons.menu_book,
+                  icon: FontAwesomeIcons.book,
                   label: 'Courses',
                   selected: selectedRoute == '/courses',
                   onTap: () => context.go('/courses'),
                 ),
                 _SidebarNavTile(
-                  icon: Icons.view_module_outlined,
-                  label: 'Modules',
-                  selected: selectedRoute == '/modules',
-                  onTap: () => context.go('/modules'),
-                ),
-                _SidebarNavTile(
-                  icon: Icons.menu_book_outlined,
+                  icon: FontAwesomeIcons.bookOpen,
                   label: 'Lessons',
                   selected: selectedRoute == '/lessons',
                   onTap: () => context.go('/lessons'),
@@ -71,7 +68,7 @@ class AppSidebar extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 24.0, top: 8.0),
             child: Column(
               children: [
-                const Divider(),
+                _CurrentUserTile(),
                 _SidebarNavTile(
                   icon: Icons.settings,
                   label: 'Settings',
@@ -141,6 +138,126 @@ class _SidebarNavTile extends StatelessWidget {
       onTap: onTap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+    );
+  }
+}
+
+class _CurrentUserTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userAsync = ref.watch(currentUserProvider);
+
+    return userAsync.when(
+      data: (user) {
+        if (user == null) {
+          return Row(
+            children: [
+              const CircleAvatar(radius: 16, child: Icon(Icons.person, size: 16)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Admin User', style: Theme.of(context).textTheme.bodyMedium),
+                    Text('Admin', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600])),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+        final profileAsync = ref.watch(adminProfileProvider(user.id));
+        return profileAsync.when(
+          data: (profile) {
+            final name = profile?.name ?? (user.email?.split('@').first ?? 'Admin User');
+            final initials = computeInitials(profile?.name ?? name);
+            final role = profile?.role ?? 'Admin';
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    child: Text(initials, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.black)),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodyMedium),
+                        Text(role, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600])),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            );
+          },
+          loading: () => Row(
+            children: [
+              const CircleAvatar(radius: 16, child: Icon(Icons.person, size: 16)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(height: 12, width: 80, color: Colors.black12),
+                    const SizedBox(height: 4),
+                    Container(height: 10, width: 50, color: Colors.black12),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          error: (_, __) => Row(
+            children: [
+              const CircleAvatar(radius: 16, child: Icon(Icons.error_outline, size: 16)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Admin User', style: Theme.of(context).textTheme.bodyMedium),
+                    Text('Admin', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600])),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => Row(
+        children: [
+          const CircleAvatar(radius: 16, child: Icon(Icons.person, size: 16)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(height: 12, width: 80, color: Colors.black12),
+                const SizedBox(height: 4),
+                Container(height: 10, width: 50, color: Colors.black12),
+              ],
+            ),
+          ),
+        ],
+      ),
+      error: (_, __) => Row(
+        children: [
+          const CircleAvatar(radius: 16, child: Icon(Icons.person, size: 16)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Admin User', style: Theme.of(context).textTheme.bodyMedium),
+                Text('Admin', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600])),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

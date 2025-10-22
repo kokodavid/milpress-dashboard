@@ -114,7 +114,6 @@ class AppTextFormField extends StatelessWidget {
 
     final baseDecoration = decoration ?? (style == AppTextFieldStyle.card ? defaultCard : defaultOutline);
     final effectiveDecoration = baseDecoration.copyWith(
-      // Do NOT put the label inside the field; render it separately above.
       hintText: baseDecoration.hintText ?? hintText,
       prefixIcon: baseDecoration.prefixIcon ?? prefixIcon,
       suffixIcon: baseDecoration.suffixIcon ?? suffixIcon,

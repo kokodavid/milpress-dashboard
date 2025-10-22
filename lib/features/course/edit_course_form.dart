@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:milpress_dashboard/widgets/app_text_form_field.dart';
 
 import 'course_models.dart';
 import 'course_repository.dart';
@@ -84,44 +85,51 @@ class _EditCourseFormState extends ConsumerState<EditCourseForm> {
                   style: const TextStyle(color: Colors.red),
                 ),
               ),
-            TextFormField(
-              initialValue: title,
-              decoration: const InputDecoration(labelText: 'Title'),
+            AppTextFormField(
+              label: title,
               validator: (v) => v == null || v.trim().isEmpty ? 'Title is required' : null,
               onSaved: (v) => title = v?.trim() ?? '',
             ),
-            const SizedBox(height: 8),
-            TextFormField(
+            const SizedBox(height: 12),
+            AppTextFormField(
+              label: 'Description', 
               initialValue: description,
-              decoration: const InputDecoration(labelText: 'Description'),
-              maxLines: 2,
+              maxLines: 6,
               validator: (v) => v == null || v.trim().isEmpty ? 'Description is required' : null,
               onSaved: (v) => description = v?.trim() ?? '',
             ),
-            const SizedBox(height: 8),
-            TextFormField(
-              initialValue: type,
-              decoration: const InputDecoration(labelText: 'Type'),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Type is required' : null,
-              onSaved: (v) => type = v?.trim() ?? '',
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: AppTextFormField(
+                    label: 'Type',
+                    initialValue: type,
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Type is required' : null,
+                    onSaved: (v) => type = v?.trim() ?? '',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AppTextFormField(
+                    label: 'Level',
+                    initialValue: level?.toString() ?? '',
+                    keyboardType: TextInputType.number,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Level is required';
+                      final val = int.tryParse(v);
+                      if (val == null || val < 1) return 'Enter a valid level (>=1)';
+                      return null;
+                    },
+                    onSaved: (v) => level = int.tryParse(v ?? ''),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            TextFormField(
-              initialValue: level?.toString() ?? '',
-              decoration: const InputDecoration(labelText: 'Level'),
-              keyboardType: TextInputType.number,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Level is required';
-                final val = int.tryParse(v);
-                if (val == null || val < 1) return 'Enter a valid level (>=1)';
-                return null;
-              },
-              onSaved: (v) => level = int.tryParse(v ?? ''),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
+            const SizedBox(height: 12),
+            AppTextFormField(
+              label: 'Duration (min)',
               initialValue: duration?.toString() ?? '',
-              decoration: const InputDecoration(labelText: 'Duration (min)'),
               keyboardType: TextInputType.number,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) {
@@ -135,7 +143,7 @@ class _EditCourseFormState extends ConsumerState<EditCourseForm> {
               },
               onSaved: (v) => duration = int.tryParse(v ?? ''),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Checkbox(

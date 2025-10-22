@@ -22,7 +22,7 @@ class AppSidebar extends StatelessWidget {
                   width: 40,
                   height: 40,
                   child: Image.asset(
-                    'assets/logo.png', // Update this path to your actual asset location
+                    'assets/logo.png',
                     fit: BoxFit.contain,
                   ),
                 ),

@@ -66,14 +66,20 @@ class CourseDetailView extends ConsumerWidget {
                     onPressed: () {
                       showDialog(
                         context: context,
-                        builder: (context) => Dialog(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24.0),
-                            child: EditCourseForm(
-                              course: course,
-                              onUpdated: () {
-                                onRefresh();
-                              },
+                        builder: (context) => Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 650),
+                            child: Dialog(
+                              insetPadding: EdgeInsets.zero,
+                              child: Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: EditCourseForm(
+                                  course: course,
+                                  onUpdated: () {
+                                    onRefresh();
+                                  },
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -163,20 +169,28 @@ class CourseDetailView extends ConsumerWidget {
                         final parentContext = context;
                         showDialog(
                           context: parentContext,
-                          builder: (_) => Dialog(
-                            insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-                            child: CreateModuleForm(
-                              courseId: course.id,
-                              initialPosition: nextModulePosition,
-                              onCreated: () {
-                                ref.invalidate(modulesForCourseProvider(course.id));
-                                onRefresh();
-                                if (parentContext.mounted) {
-                                  ScaffoldMessenger.of(parentContext).showSnackBar(
-                                    const SnackBar(content: Text('Module created')),
-                                  );
-                                }
-                              },
+                          builder: (_) => Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 650),
+                              child: Dialog(
+                                insetPadding: EdgeInsets.zero,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: CreateModuleForm(
+                                    courseId: course.id,
+                                    initialPosition: nextModulePosition,
+                                    onCreated: () {
+                                      ref.invalidate(modulesForCourseProvider(course.id));
+                                      onRefresh();
+                                      if (parentContext.mounted) {
+                                        ScaffoldMessenger.of(parentContext).showSnackBar(
+                                          const SnackBar(content: Text('Module created')),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../widgets/app_text_form_field.dart';
 import 'modules_model.dart';
 import 'modules_repository.dart';
 
@@ -96,113 +97,118 @@ class _CreateModuleFormState extends ConsumerState<CreateModuleForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Create Module',
-                  style: Theme.of(context).textTheme.headlineSmall,
+    return Form(
+      key: _formKey,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Create Module',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 16),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 ),
-                const SizedBox(height: 16),
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.red),
+              AppTextFormField(
+                controller: _descriptionController,
+                label: 'Title',
+                maxLines: 1,
+                validator: (v) => null,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextFormField(
+                      controller: _positionController,
+                      label: 'Position',
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Position is required';
+                        }
+                        final parsed = int.tryParse(value);
+                        if (parsed == null || parsed < 1) {
+                          return 'Enter a valid position (>=1)';
+                        }
+                        return null;
+                      },
                     ),
                   ),
-                TextFormField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    hintText: 'e.g. Introduction to the topic',
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _positionController,
-                  decoration: const InputDecoration(labelText: 'Position'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Position is required';
-                    }
-                    final parsed = int.tryParse(value);
-                    if (parsed == null || parsed < 1) {
-                      return 'Enter a valid position (>=1)';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _durationController,
-                  decoration: const InputDecoration(labelText: 'Duration (min)'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return null;
-                    }
-                    final parsed = int.tryParse(value);
-                    if (parsed == null || parsed < 1) {
-                      return 'Enter a valid duration (>=1)';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                SwitchListTile(
-                  value: _locked,
-                  onChanged: (value) {
-                    setState(() {
-                      _locked = value;
-                    });
-                  },
-                  title: const Text('Locked'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                if (_locked) ...[
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _lockMessageController,
-                    decoration: const InputDecoration(labelText: 'Lock message'),
-                    maxLines: 2,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppTextFormField(
+                      controller: _durationController,
+                      label: 'Duration (min)',
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return null;
+                        }
+                        final parsed = int.tryParse(value);
+                        if (parsed == null || parsed < 1) {
+                          return 'Enter a valid duration (>=1)';
+                        }
+                        return null;
+                      },
+                    ),
                   ),
                 ],
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _submit,
-                      icon: _isLoading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.save_outlined),
-                      label: const Text('Create Module'),
-                    ),
-                  ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Checkbox(
+                    value: _locked,
+                    onChanged: (value) {
+                      setState(() {
+                        _locked = value ?? false;
+                      });
+                    },
+                  ),
+                  const Text('Locked'),
+                ],
+              ),
+              if (_locked) ...[
+                const SizedBox(height: 8),
+                AppTextFormField(
+                  controller: _lockMessageController,
+                  label: 'Lock message',
+                  maxLines: 2,
                 ),
               ],
-            ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _submit,
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Create Module'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

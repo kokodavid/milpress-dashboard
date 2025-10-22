@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 // Sidebar is now handled globally by AppShell
 
@@ -55,7 +56,7 @@ class DashboardOverview extends StatelessWidget {
 														context,
 														title: 'Courses',
 														subtitle: 'Create and manage courses',
-														icon: Icons.menu_book_outlined,
+														icon: FontAwesomeIcons.bookOpen,
 														color: Colors.blue,
 														onTap: () => context.go('/courses'),
 														ctaText: 'Open',

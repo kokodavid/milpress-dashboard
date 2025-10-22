@@ -9,7 +9,7 @@ class Lesson {
   final int? durationMinutes;
   final String? thumbnails;
   final String? category;
-  final String? level; // text per schema
+  final String? level;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 

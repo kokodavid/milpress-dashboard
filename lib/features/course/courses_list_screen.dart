@@ -305,10 +305,16 @@ class CoursesListScreen extends ConsumerWidget {
         onPressed: () {
           showDialog(
             context: context,
-            builder: (context) => Dialog(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: CreateCourseForm(onCreated: refreshCourses),
+            builder: (context) => Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 650),
+                child: Dialog(
+                  insetPadding: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: CreateCourseForm(onCreated: refreshCourses),
+                  ),
+                ),
               ),
             ),
           );

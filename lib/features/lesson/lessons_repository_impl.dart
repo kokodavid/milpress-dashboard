@@ -55,6 +55,11 @@ class LessonsRepository {
   Future<void> deleteLesson(String id) async {
     await _client.from(table).delete().eq('id', id);
   }
+
+  Future<int> countLessons() async {
+    final List data = await _client.from(table).select('id');
+    return data.length;
+  }
 }
 
 final lessonsRepositoryProvider = Provider<LessonsRepository>((ref) {

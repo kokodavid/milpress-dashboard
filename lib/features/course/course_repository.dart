@@ -9,6 +9,12 @@ final courseRepositoryProvider = Provider<CourseRepository>((ref) {
   return CourseRepository(client);
 });
 
+// Total count of courses
+final coursesCountProvider = FutureProvider<int>((ref) async {
+  final repo = ref.watch(courseRepositoryProvider);
+  return repo.countCourses();
+});
+
 final coursesListProvider = FutureProvider.family<List<Course>, CoursesQuery?>((ref, query) async {
   final repo = ref.watch(courseRepositoryProvider);
   return repo.fetchCourses(query: query);
@@ -168,5 +174,11 @@ class CourseRepository {
   // Delete
   Future<void> deleteCourse(String id) async {
     await _client.from(table).delete().eq('id', id);
+  }
+
+  // Count
+  Future<int> countCourses() async {
+    final List data = await _client.from(table).select('id');
+    return data.length;
   }
 }

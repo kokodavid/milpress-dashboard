@@ -78,3 +78,9 @@ final deleteLessonProvider = StateNotifierProvider<DeleteLessonController, Async
   final repo = ref.watch(lessonsRepositoryProvider);
   return DeleteLessonController(repo);
 });
+
+// Total count of lessons
+final lessonsCountProvider = FutureProvider<int>((ref) async {
+  final repo = ref.watch(lessonsRepositoryProvider);
+  return repo.countLessons();
+});

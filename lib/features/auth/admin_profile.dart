@@ -60,3 +60,17 @@ String computeInitials(String? name, {String fallback = 'AD'}) {
   final res = (first + second).toUpperCase();
   return res.isEmpty ? fallback : res;
 }
+
+/// Format role strings from the database (e.g., 'super_admin') into
+/// human-friendly display text (e.g., 'Super Admin').
+String formatRole(String? role, {String fallback = 'Admin'}) {
+  if (role == null || role.trim().isEmpty) return fallback;
+  final normalized = role.trim().toLowerCase();
+  if (normalized == 'super_admin') return 'Super Admin';
+  if (normalized == 'admin') return 'Admin';
+  return normalized
+      .split(RegExp(r'[_\s]+'))
+      .where((p) => p.isNotEmpty)
+      .map((w) => w[0].toUpperCase() + w.substring(1))
+      .join(' ');
+}

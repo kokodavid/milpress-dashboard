@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'app_sidebar.dart';
+import 'search_input.dart';
+import 'current_user_chip.dart';
 
 class AppShell extends StatelessWidget {
   final Widget child;
@@ -10,11 +12,74 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     return Scaffold(
+      backgroundColor: const Color(0xFFF6F8FF),
       body: Row(
         children: [
           AppSidebar(selectedRoute: location),
-          const VerticalDivider(thickness: 1, width: 1),
-          Expanded(child: child),
+          Expanded(
+            child: Column(
+              children: [
+                // Top app bar area
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          child: SearchInput(
+                            hintText: 'Search anything',
+                            onChanged: (value) {
+                              // TODO: hook up filtering/search action
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.white,
+                        ),
+                        child: const CurrentUserChip(),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.white,
+                        ),
+                        child: IconButton(
+                          tooltip: 'Notifications',
+                          onPressed: () {
+                            // TODO: open notifications
+                          },
+                          icon: const Icon(Icons.notifications_none_outlined),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Content
+                Expanded(child: child),
+              ],
+            ),
+          ),
         ],
       ),
     );

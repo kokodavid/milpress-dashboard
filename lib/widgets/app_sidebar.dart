@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:milpress_dashboard/features/auth/admin_profile.dart';
+import 'package:milpress_dashboard/utils/app_colors.dart';
 
 class AppSidebar extends ConsumerWidget {
   final String selectedRoute;
@@ -12,7 +13,18 @@ class AppSidebar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       width: 240,
-      color: const Color(0xFFF7F7FA),
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.copBlue,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           // Logo section
@@ -24,15 +36,16 @@ class AppSidebar extends ConsumerWidget {
                 SizedBox(
                   width: 40,
                   height: 40,
-                  child: Image.asset(
-                    'assets/logo.png',
-                    fit: BoxFit.contain,
-                  ),
+                  child: Image.asset('assets/logo.png', fit: BoxFit.contain),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   'MilPress',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white,
+                    fontSize: 25,
+                  ),
                 ),
               ],
             ),
@@ -68,7 +81,6 @@ class AppSidebar extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: 24.0, top: 8.0),
             child: Column(
               children: [
-                _CurrentUserTile(),
                 _SidebarNavTile(
                   icon: Icons.settings,
                   label: 'Settings',
@@ -79,9 +91,7 @@ class AppSidebar extends ConsumerWidget {
                   icon: Icons.logout,
                   label: 'Logout',
                   selected: false,
-                  onTap: () {
-                    // TODO: Implement logout logic
-                  },
+                  onTap: () {},
                   color: Colors.deepOrange,
                 ),
               ],
@@ -102,7 +112,10 @@ class _SidebarSectionLabel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 16, 0, 8),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.grey[600], letterSpacing: 1.2),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: Colors.grey[600],
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }
@@ -123,7 +136,9 @@ class _SidebarNavTile extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    final highlight = selected ? Theme.of(context).colorScheme.primary : (color ?? Colors.black87);
+    final highlight = selected
+        ? AppColors.primaryColor
+        : (color ?? Colors.grey);
     return ListTile(
       leading: Icon(icon, color: highlight),
       title: Text(
@@ -152,14 +167,25 @@ class _CurrentUserTile extends ConsumerWidget {
         if (user == null) {
           return Row(
             children: [
-              const CircleAvatar(radius: 16, child: Icon(Icons.person, size: 16)),
+              const CircleAvatar(
+                radius: 16,
+                child: Icon(Icons.person, size: 16),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Admin User', style: Theme.of(context).textTheme.bodyMedium),
-                    Text('Admin', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600])),
+                    Text(
+                      'Admin User',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    Text(
+                      'Admin',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                    ),
                   ],
                 ),
               ),
@@ -169,34 +195,51 @@ class _CurrentUserTile extends ConsumerWidget {
         final profileAsync = ref.watch(adminProfileProvider(user.id));
         return profileAsync.when(
           data: (profile) {
-            final name = profile?.name ?? (user.email?.split('@').first ?? 'Admin User');
+            final name =
+                profile?.name ?? (user.email?.split('@').first ?? 'Admin User');
             final initials = computeInitials(profile?.name ?? name);
-            final role = profile?.role ?? 'Admin';
+            final role = formatRole(profile?.role);
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
                   CircleAvatar(
                     radius: 16,
-                    child: Text(initials, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.black)),
+                    child: Text(
+                      initials,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelLarge?.copyWith(color: Colors.black),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodyMedium),
-                        Text(role, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600])),
+                        Text(
+                          name,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        Text(
+                          role,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.grey[600]),
+                        ),
                       ],
                     ),
-                  )
+                  ),
                 ],
               ),
             );
           },
           loading: () => Row(
             children: [
-              const CircleAvatar(radius: 16, child: Icon(Icons.person, size: 16)),
+              const CircleAvatar(
+                radius: 16,
+                child: Icon(Icons.person, size: 16),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -212,14 +255,25 @@ class _CurrentUserTile extends ConsumerWidget {
           ),
           error: (_, __) => Row(
             children: [
-              const CircleAvatar(radius: 16, child: Icon(Icons.error_outline, size: 16)),
+              const CircleAvatar(
+                radius: 16,
+                child: Icon(Icons.error_outline, size: 16),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Admin User', style: Theme.of(context).textTheme.bodyMedium),
-                    Text('Admin', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600])),
+                    Text(
+                      'Admin User',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    Text(
+                      'Admin',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                    ),
                   ],
                 ),
               ),
@@ -251,8 +305,16 @@ class _CurrentUserTile extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Admin User', style: Theme.of(context).textTheme.bodyMedium),
-                Text('Admin', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600])),
+                Text(
+                  'Admin User',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                Text(
+                  'Admin',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                ),
               ],
             ),
           ),

@@ -31,7 +31,7 @@ class DashboardOverview extends StatelessWidget {
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
 					Text(
-						'Dashboard Overview',
+						'Overview',
 						style: Theme.of(context).textTheme.headlineMedium,
 					),
 								const SizedBox(height: 24),

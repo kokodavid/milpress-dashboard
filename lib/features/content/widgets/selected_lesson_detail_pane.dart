@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../lesson/lessons_repository.dart';
 import '../../lesson/lesson_quiz_repository.dart';
 import '../../lesson/widgets/lesson_quiz_form.dart';
+import 'media/video_player_widget.dart';
+import 'media/audio_player_widget.dart';
 import '../state/lessons_list_controller.dart';
 
 class SelectedLessonDetailPane extends ConsumerWidget {
@@ -33,8 +35,12 @@ class SelectedLessonDetailPane extends ConsumerWidget {
           padding: const EdgeInsets.all(16.0),
           child: ListView(
             children: [
+              // Title row with thumbnail
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _LessonThumbnail(url: lesson.thumbnails),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       lesson.title,
@@ -60,6 +66,20 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 16),
+              // Video player
+              if (lesson.videoUrl != null && lesson.videoUrl!.isNotEmpty) ...[
+                Text('Video', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                LessonVideoPlayer(url: lesson.videoUrl!),
+                const SizedBox(height: 16),
+              ],
+              // Audio player
+              if (lesson.audioUrl != null && lesson.audioUrl!.isNotEmpty) ...[
+                Text('Audio', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                LessonAudioPlayer(url: lesson.audioUrl!),
+                const SizedBox(height: 16),
+              ],
               if (lesson.videoUrl != null)
                 ListTile(
                   leading: const Icon(Icons.ondemand_video),
@@ -141,6 +161,37 @@ class _EmptyDetailPlaceholder extends StatelessWidget {
           'Select a lesson to view details',
           style: Theme.of(context).textTheme.titleMedium,
         ),
+      ),
+    );
+  }
+}
+
+class _LessonThumbnail extends StatelessWidget {
+  const _LessonThumbnail({required this.url});
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholder = Container(
+      width: 96,
+      height: 72,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Icon(Icons.image, color: Colors.grey),
+    );
+
+    if (url == null || url!.isEmpty) return placeholder;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        url!,
+        width: 96,
+        height: 72,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => placeholder,
       ),
     );
   }
@@ -230,13 +281,12 @@ class _QuizCard extends StatelessWidget {
               Text(q.questionContent!, style: theme.textTheme.titleMedium),
               const SizedBox(height: 8),
             ],
-            if (q.soundFileUrl != null)
-              ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.audiotrack),
-                title: Text(q.soundFileUrl!),
-              ),
+            if (q.soundFileUrl != null && q.soundFileUrl!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('Audio', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 6),
+              LessonAudioPlayer(url: q.soundFileUrl!),
+            ],
             if (optionsWidget != null) ...[
               const SizedBox(height: 8),
               optionsWidget,

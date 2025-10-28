@@ -6,7 +6,7 @@ class LessonQuiz {
   final String? questionContent;
   final String? soundFileUrl;
   final String? correctAnswer;
-  final Map<String, dynamic>? options; // jsonb
+  final Map<String, dynamic>? options; // jsonb (can originate as map or array)
   final int? difficultyLevel; // int4
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -26,6 +26,21 @@ class LessonQuiz {
   });
 
   factory LessonQuiz.fromMap(Map<String, dynamic> json) {
+    // Normalize options: Supabase may return a Map or a List for JSONB column.
+    Map<String, dynamic>? normalizedOptions;
+    final rawOptions = json['options'];
+    if (rawOptions is Map) {
+      // Cast to Map<String, dynamic>
+      normalizedOptions = rawOptions.map((key, value) => MapEntry(key.toString(), value));
+    } else if (rawOptions is List) {
+      // Wrap list into a map under a conventional key so UI can render choices
+      normalizedOptions = {
+        'choices': List<dynamic>.from(rawOptions),
+      };
+    } else {
+      normalizedOptions = null;
+    }
+
     return LessonQuiz(
       id: json['id'] as String,
       lessonId: json['lesson_id'] as String,
@@ -34,7 +49,7 @@ class LessonQuiz {
       questionContent: json['question_content'] as String?,
       soundFileUrl: json['sound_file_url'] as String?,
       correctAnswer: json['correct_answer'] as String?,
-      options: json['options'] as Map<String, dynamic>?,
+      options: normalizedOptions,
       difficultyLevel: json['difficulty_level'] as int?,
       createdAt: _toDateTime(json['created_at']),
       updatedAt: _toDateTime(json['updated_at']),

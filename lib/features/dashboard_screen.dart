@@ -5,6 +5,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:milpress_dashboard/features/course/course_repository.dart';
 import 'package:milpress_dashboard/features/lesson/lessons_repository.dart';
 import 'package:milpress_dashboard/features/auth/profiles_repository.dart';
+import 'package:milpress_dashboard/features/modules/modules_repository.dart';
 // Sidebar is now handled globally by AppShell
 
 final selectedIndexProvider = StateProvider<int>((ref) => 0);
@@ -32,9 +33,10 @@ class DashboardOverview extends ConsumerWidget {
     final lessonsCount = lessonsCountAsync.value ?? 0;
     final usersCount = usersCountAsync.value ?? 0;
 
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Overview', style: Theme.of(context).textTheme.headlineMedium),
@@ -42,21 +44,24 @@ class DashboardOverview extends ConsumerWidget {
           // Stats cards row/grid
           LayoutBuilder(
             builder: (context, constraints) {
-              int crossAxisCount = 3;
-              if (constraints.maxWidth < 600) {
-                crossAxisCount = 1;
-              } else if (constraints.maxWidth < 900) {
-                crossAxisCount = 2;
-              }
+                int crossAxisCount = 3;
+                double aspect = 16 / 9;
+                if (constraints.maxWidth < 600) {
+                  crossAxisCount = 1;
+                  aspect = 3.2; // give more height for content on narrow screens
+                } else if (constraints.maxWidth < 900) {
+                  crossAxisCount = 2;
+                  aspect = 1.6;
+                }
 
-              return GridView.count(
-                crossAxisCount: crossAxisCount,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 16 / 9,
-                children: [
+                return GridView.count(
+                  crossAxisCount: crossAxisCount,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: aspect,
+                  children: [
                   MetricCard(
                     count: coursesCount,
                     label: 'Courses',
@@ -87,15 +92,16 @@ class DashboardOverview extends ConsumerWidget {
                     icon: FontAwesomeIcons.userGroup,
                     progress: 0.59,
                   ),
-                ],
-              );
+                  ],
+                );
             },
           ),
           const SizedBox(height: 24),
           // Latest courses table + latest users list
           _LatestActivitySection(),
           const SizedBox(height: 24),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -217,19 +223,24 @@ class _LatestActivitySection extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final sideBySide = constraints.maxWidth >= 980;
-        final content = [
-          const Expanded(child: _LatestCoursesTable()),
-          const SizedBox(width: 16, height: 16),
-          SizedBox(
-            width: sideBySide ? 340 : double.infinity,
-            child: const _LatestUsersCard(),
-          ),
-        ];
-
         if (sideBySide) {
-          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: content);
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(child: _LatestCoursesTable()),
+              const SizedBox(width: 16),
+              SizedBox(width: 340, child: const _LatestUsersCard()),
+            ],
+          );
         } else {
-          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: content);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: const [
+              _LatestCoursesTable(),
+              SizedBox(height: 16),
+              _LatestUsersCard(),
+            ],
+          );
         }
       },
     );
@@ -255,15 +266,12 @@ class _LatestCoursesTable extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Text('My Courses', style: Theme.of(context).textTheme.titleLarge),
+                Text('Latest Courses', style: Theme.of(context).textTheme.titleLarge),
                 const Spacer(),
-                FilledButton.tonal(onPressed: () {}, child: const Text('Active')),
-                const SizedBox(width: 8),
-                OutlinedButton(onPressed: () {}, child: const Text('Completed')),
+                TextButton(onPressed: () {}, child: const Text('View All')),
               ],
             ),
             const SizedBox(height: 12),
-            Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
             const SizedBox(height: 8),
             _TableHeader(),
             asyncCourses.when(
@@ -282,14 +290,14 @@ class _LatestCoursesTable extends ConsumerWidget {
                     child: Text('No courses yet'),
                   );
                 }
+                final visibleCount = courses.length > 5 ? 5 : courses.length;
                 return ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: courses.length,
+                  itemCount: visibleCount,
                   separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.withOpacity(0.1)),
                   itemBuilder: (context, index) {
                     final c = courses[index];
-                    final progress = ((index + 2) % 5) / 5.0; // demo progress variation
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                       child: Row(
@@ -309,32 +317,11 @@ class _LatestCoursesTable extends ConsumerWidget {
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          // Completed bar
-                          SizedBox(
-                            width: 200,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: LinearProgressIndicator(
-                                    value: progress,
-                                    minHeight: 6,
-                                    backgroundColor: Colors.indigo.withAlpha(40),
-                                    color: Colors.indigo,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                           const SizedBox(width: 16),
-                          // Status icons (demo numbers)
-                          _StatusPill(icon: Icons.video_library_outlined, value: 6, color: Colors.purple),
+                          // Status: lessons, modules, availability lock
+                          _CourseStatsPills(courseId: c.id, locked: c.locked),
                           const SizedBox(width: 12),
-                          _StatusPill(icon: Icons.assignment_outlined, value: 3, color: Colors.pink),
-                          const SizedBox(width: 12),
-                          _StatusPill(icon: Icons.quiz_outlined, value: 3, color: Colors.green),
+                          const Icon(Icons.chevron_right, color: Colors.black26),
                         ],
                       ),
                     );
@@ -361,7 +348,6 @@ class _TableHeader extends StatelessWidget {
           const SizedBox(width: 8),
           const SizedBox(width: 40),
           Expanded(child: Text('Course Name', style: style)),
-          SizedBox(width: 212, child: Text('Completed', style: style)),
           const SizedBox(width: 12),
           SizedBox(width: 120, child: Text('Status', style: style)),
         ],
@@ -389,6 +375,55 @@ class _StatusPill extends StatelessWidget {
         const SizedBox(width: 4),
         Text('$value', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: color)),
       ]),
+    );
+  }
+}
+
+class _CourseStatsPills extends ConsumerWidget {
+  const _CourseStatsPills({required this.courseId, required this.locked});
+  final String courseId;
+  final bool locked;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lessonsAsync = ref.watch(lessonsCountForCourseProvider(courseId));
+    final modulesAsync = ref.watch(modulesCountForCourseProvider(courseId));
+
+    final lessons = lessonsAsync.value;
+    final modules = modulesAsync.value;
+
+    return Row(
+      children: [
+        _StatusPill(
+          icon: Icons.menu_book,
+          value: lessons ?? 0,
+          color: Colors.purple,
+        ),
+        const SizedBox(width: 12),
+        _StatusPill(
+          icon: Icons.view_module_outlined,
+          value: modules ?? 0,
+          color: Colors.teal,
+        ),
+        const SizedBox(width: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: (locked ? Colors.red : Colors.green).withAlpha(24),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(children: [
+            Icon(locked ? Icons.lock_outline : Icons.lock_open_outlined,
+                color: locked ? Colors.red : Colors.green, size: 16),
+            const SizedBox(width: 4),
+            Text(locked ? 'Locked' : 'Open',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium
+                    ?.copyWith(color: locked ? Colors.red : Colors.green)),
+          ]),
+        ),
+      ],
     );
   }
 }

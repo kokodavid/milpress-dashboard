@@ -84,3 +84,9 @@ final lessonsCountProvider = FutureProvider<int>((ref) async {
   final repo = ref.watch(lessonsRepositoryProvider);
   return repo.countLessons();
 });
+
+// Total lessons for a course
+final lessonsCountForCourseProvider = FutureProvider.family<int, String>((ref, courseId) async {
+  final repo = ref.watch(lessonsRepositoryProvider);
+  return repo.countLessonsForCourse(courseId);
+});

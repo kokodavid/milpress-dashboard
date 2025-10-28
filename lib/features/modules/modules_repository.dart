@@ -176,4 +176,16 @@ class ModulesRepository {
   Future<void> deleteModule(String id) async {
     await _client.from(table).delete().eq('id', id);
   }
+
+  // Count modules for a course
+  Future<int> countModulesForCourse(String courseId) async {
+    final List data = await _client.from(table).select('id').eq('course_id', courseId);
+    return data.length;
+  }
 }
+
+// Count provider for modules by course
+final modulesCountForCourseProvider = FutureProvider.family<int, String>((ref, courseId) async {
+  final repo = ref.watch(modulesRepositoryProvider);
+  return repo.countModulesForCourse(courseId);
+});

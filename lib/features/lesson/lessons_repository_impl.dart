@@ -60,6 +60,21 @@ class LessonsRepository {
     final List data = await _client.from(table).select('id');
     return data.length;
   }
+
+  Future<int> countLessonsForCourse(String courseId) async {
+    // Fetch module ids for the course
+    final List mods = await _client.from('modules').select('id').eq('course_id', courseId);
+    if (mods.isEmpty) return 0;
+    final moduleIds = mods.map((e) => (e as Map)['id']).toList();
+    // Count lessons whose module_id is in those modules
+  // Build Postgrest IN() filter string: ("id1","id2",...)
+  final inList = '(${moduleIds.map((id) => '"$id"').join(',')})';
+  final List lessons = await _client
+    .from(table)
+    .select('id')
+    .filter('module_id', 'in', inList);
+    return lessons.length;
+  }
 }
 
 final lessonsRepositoryProvider = Provider<LessonsRepository>((ref) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:milpress_dashboard/utils/app_colors.dart';
 
 import '../../lesson/lessons_repository.dart';
 import '../../lesson/lesson_quiz_repository.dart';
@@ -7,6 +8,7 @@ import '../../lesson/widgets/lesson_quiz_form.dart';
 import 'media/video_player_widget.dart';
 import 'media/audio_player_widget.dart';
 import '../state/lessons_list_controller.dart';
+import '../../../widgets/app_button.dart';
 
 class SelectedLessonDetailPane extends ConsumerWidget {
   const SelectedLessonDetailPane({super.key});
@@ -35,107 +37,463 @@ class SelectedLessonDetailPane extends ConsumerWidget {
           padding: const EdgeInsets.all(16.0),
           child: ListView(
             children: [
-              // Title row with thumbnail
+              // Header section with thumbnail, title, and actions
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _LessonThumbnail(url: lesson.thumbnails),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      lesson.title,
-                      style: Theme.of(context).textTheme.headlineSmall,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Title
+                        Text(
+                          lesson.title,
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        // Lesson details row
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.list_alt,
+                                    size: 14,
+                                    color: Colors.purple.shade700,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Position ${lesson.position}',
+                                    style: TextStyle(
+                                      color: Colors.purple.shade700,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            if (lesson.durationMinutes != null) ...[
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 16,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${lesson.durationMinutes}min',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Colors.grey.shade600,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 16),
+                            ],
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.calendar_today,
+                                  size: 16,
+                                  color: Colors.grey.shade600,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  lesson.createdAt?.toString().split(' ')[0] ??
+                                      'No date',
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Action buttons
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          // Show lesson info
+                        },
+                        icon: Icon(
+                          Icons.info_outline,
+                          color: Colors.grey.shade600,
+                        ),
+                        tooltip: 'Lesson Info',
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(6),
+                            onTap: () {
+                              // Edit lesson functionality
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Image.asset(
+                                    'assets/edit_pencil.png',
+                                    width: 16,
+                                    height: 16,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Edit',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(6),
+                            onTap: () {
+                              // Delete lesson functionality
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red.shade600),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                children: [
-                  Chip(
-                    avatar: const Icon(Icons.list_alt, size: 16),
-                    label: Text('Position ${lesson.position}'),
-                  ),
-                  if (lesson.durationMinutes != null)
-                    Chip(
-                      avatar: const Icon(Icons.schedule, size: 16),
-                      label: Text('${lesson.durationMinutes} min'),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               // Video player
               if (lesson.videoUrl != null && lesson.videoUrl!.isNotEmpty) ...[
                 Text('Video', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
-                LessonVideoPlayer(url: lesson.videoUrl!),
+                Center(
+                  child: Container(
+                    width: 750,
+                    constraints: const BoxConstraints(
+                      minHeight: 225,
+                      maxHeight: 450,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LessonVideoPlayer(url: lesson.videoUrl!),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 16),
               ],
-              // Audio player
-              if (lesson.audioUrl != null && lesson.audioUrl!.isNotEmpty) ...[
-                Text('Audio', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                LessonAudioPlayer(url: lesson.audioUrl!),
-                const SizedBox(height: 16),
-              ],
-              if (lesson.videoUrl != null)
-                ListTile(
-                  leading: const Icon(Icons.ondemand_video),
-                  title: const Text('Video'),
-                  subtitle: Text(lesson.videoUrl!),
-                ),
-              if (lesson.audioUrl != null)
-                ListTile(
-                  leading: const Icon(Icons.audiotrack),
-                  title: const Text('Audio'),
-                  subtitle: Text(lesson.audioUrl!),
-                ),
+
+              // Extras section
+              Text('Extras', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
-              Text(
-                'Content',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              if (lesson.content != null && lesson.content!.isNotEmpty)
-                Text(
-                  lesson.content!,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                )
-              else
-                const Text('No content provided'),
+
+              // Video file entry
+              if (lesson.videoUrl != null && lesson.videoUrl!.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade100,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          Icons.videocam,
+                          color: Colors.blue.shade700,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Video',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              lesson.videoUrl!,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.grey.shade600),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Action buttons
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              // Play video
+                            },
+                            icon: Icon(
+                              Icons.play_arrow,
+                              color: Colors.grey.shade600,
+                            ),
+                            tooltip: 'Play',
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              // Edit video URL
+                            },
+                            icon: Image.asset(
+                              'assets/edit_pencil.png',
+                              width: 20,
+                              height: 20,
+                              color: Colors.grey.shade600,
+                            ),
+                            tooltip: 'Edit',
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              // Delete video
+                            },
+                            icon: Image.asset(
+                              'assets/delete.png',
+                              width: 20,
+                              height: 20,
+                              color: Colors.red.shade600,
+                            ),
+                            tooltip: 'Delete',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+              // Audio file entry
+              if (lesson.audioUrl != null && lesson.audioUrl!.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade100,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          Icons.audiotrack,
+                          color: Colors.green.shade700,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Audio',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              lesson.audioUrl!,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.grey.shade600),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Action buttons
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              // Play audio
+                            },
+                            icon: Icon(
+                              Icons.play_arrow,
+                              color: Colors.grey.shade600,
+                            ),
+                            tooltip: 'Play',
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              // Edit audio URL
+                            },
+                            icon: Image.asset(
+                              'assets/edit_pencil.png',
+                              width: 20,
+                              height: 20,
+                              color: Colors.grey.shade600,
+                            ),
+                            tooltip: 'Edit',
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              // Delete audio
+                            },
+                            icon: Image.asset(
+                              'assets/delete.png',
+                              width: 20,
+                              height: 20,
+                              color: Colors.red.shade600,
+                            ),
+                            tooltip: 'Delete',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
 
               const SizedBox(height: 24),
+              // Text(
+              //   'Content',
+              //   style: Theme.of(context).textTheme.titleMedium,
+              // ),
+              // const SizedBox(height: 8),
+              // if (lesson.content != null && lesson.content!.isNotEmpty)
+              //   Text(
+              //     lesson.content!,
+              //     style: Theme.of(context).textTheme.bodyMedium,
+              //   )
+              // else
+              //   const Text('No content provided'),
+
+              // const SizedBox(height: 24),
               Row(
                 children: [
-                  Text('Quizzes', style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    'Lesson Quizzes',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const Spacer(),
-                  FilledButton.icon(
-                    onPressed: () async {
-                      final created = await showModalBottomSheet<bool>(
-                        context: context,
-                        isScrollControlled: true,
-                        builder: (ctx) => Padding(
-                          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-                          child: SizedBox(
-                            height: MediaQuery.of(ctx).size.height * 0.85,
-                            child: LessonQuizForm(lessonId: lesson.id),
+                  SizedBox(
+                    width: 120,
+                    height: 35,
+                    child: AppButton(
+                      label: 'Add Quiz',
+                      backgroundColor: AppColors.primaryColor,
+                      onPressed: () async {
+                        final created = await showModalBottomSheet<bool>(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (ctx) => Padding(
+                            padding: EdgeInsets.only(
+                              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                            ),
+                            child: SizedBox(
+                              height: MediaQuery.of(ctx).size.height * 0.85,
+                              child: LessonQuizForm(lessonId: lesson.id),
+                            ),
                           ),
-                        ),
-                      );
-                      if (created == true) {
-                        // refresh quizzes list
-                        // ignore: use_build_context_synchronously
-                        final ref = ProviderScope.containerOf(context, listen: false);
-                        ref.read(quizzesForLessonProvider(lesson.id).future).then((_) {
+                        );
+                        if (created == true) {
+                          // refresh quizzes list
+                          // ignore: use_build_context_synchronously
+                          final ref = ProviderScope.containerOf(
+                            context,
+                            listen: false,
+                          );
+                          ref
+                              .read(quizzesForLessonProvider(lesson.id).future)
+                              .then((_) {
+                                ref.invalidate(
+                                  quizzesForLessonProvider(lesson.id),
+                                );
+                              });
                           ref.invalidate(quizzesForLessonProvider(lesson.id));
-                        });
-                        ref.invalidate(quizzesForLessonProvider(lesson.id));
-                      }
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Quiz'),
+                        }
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -173,23 +531,23 @@ class _LessonThumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final placeholder = Container(
-      width: 96,
-      height: 72,
+      width: 120,
+      height: 120,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: const Icon(Icons.image, color: Colors.grey),
+      child: const Icon(Icons.image, color: Colors.grey, size: 40),
     );
 
     if (url == null || url!.isEmpty) return placeholder;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(12),
       child: Image.network(
         url!,
-        width: 96,
-        height: 72,
+        width: 120,
+        height: 120,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => placeholder,
       ),
@@ -220,7 +578,7 @@ class _LessonQuizzesList extends ConsumerWidget {
               onPressed: () => ref.refresh(quizzesForLessonProvider(lessonId)),
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
-            )
+            ),
           ],
         ),
       ),
@@ -231,11 +589,7 @@ class _LessonQuizzesList extends ConsumerWidget {
             child: Text('No quizzes for this lesson'),
           );
         }
-        return Column(
-          children: [
-            for (final q in quizzes) _QuizCard(q: q),
-          ],
-        );
+        return Column(children: [for (final q in quizzes) _QuizCard(q: q)]);
       },
     );
   }
@@ -250,55 +604,135 @@ class _QuizCard extends StatelessWidget {
     final theme = Theme.of(context);
     final optionsWidget = _buildOptions(q.options, theme);
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      elevation: 0,
+      color: Colors.grey.shade50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Title row with actions
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (q.questionType != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: Chip(label: Text(q.questionType!)),
+                Expanded(
+                  child: Text(
+                    q.questionContent ?? 'Quiz Question',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                    ),
                   ),
-                if (q.stage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: Chip(label: Text(q.stage!)),
-                  ),
-                if (q.difficultyLevel != null)
-                  Chip(
-                    avatar: const Icon(Icons.flag, size: 16),
-                    label: Text('Lvl ${q.difficultyLevel}'),
-                  ),
-                const Spacer(),
+                ),
                 _QuizCardActions(q: q),
               ],
             ),
-            if (q.questionContent != null) ...[
-              Text(q.questionContent!, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 8),
-            ],
+            const SizedBox(height: 12),
+            
+            // Tags row
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                if (q.difficultyLevel != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Level ${q.difficultyLevel}',
+                      style: TextStyle(
+                        color: Colors.orange.shade700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                if (q.questionType != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      q.questionType!,
+                      style: TextStyle(
+                        color: Colors.blue.shade700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                if (q.stage != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      q.stage!,
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            
+            // Audio player section
             if (q.soundFileUrl != null && q.soundFileUrl!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text('Audio', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 6),
-              LessonAudioPlayer(url: q.soundFileUrl!),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade200, width: 1),
+                ),
+                child: LessonAudioPlayer(url: q.soundFileUrl!),
+              ),
             ],
+            
+            // Answer options section
             if (optionsWidget != null) ...[
+              const SizedBox(height: 20),
+              Text(
+                'Answer Options',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 8),
               optionsWidget,
             ],
+            
+            // Correct answer section
             if (q.correctAnswer != null) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.green),
-                  const SizedBox(width: 6),
-                  Text('Answer: ${q.correctAnswer!}', style: theme.textTheme.bodyMedium),
-                ],
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Correct Answer: ${q.correctAnswer!}',
+                  style: TextStyle(
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ],
           ],
@@ -316,17 +750,30 @@ class _QuizCard extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Options', style: theme.textTheme.titleSmall),
-          const SizedBox(height: 6),
           for (var i = 0; i < list.length; i++)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(String.fromCharCode('A'.codeUnitAt(0) + i)),
-                  const Text('. '),
-                  Expanded(child: Text(list[i].toString())),
+                  Container(
+                    width: 24,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '${String.fromCharCode('A'.codeUnitAt(0) + i)}:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      list[i].toString(),
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -338,16 +785,30 @@ class _QuizCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Options', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 6),
         ...options.entries.map(
           (e) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2.0),
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${e.key}: '),
-                Expanded(child: Text(e.value.toString())),
+                Container(
+                  width: 24,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${e.key.toString().toUpperCase()}:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    e.value.toString(),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
               ],
             ),
           ),
@@ -368,13 +829,20 @@ class _QuizCardActions extends ConsumerWidget {
       children: [
         IconButton(
           tooltip: 'Edit',
-          icon: const Icon(Icons.edit_outlined),
+          icon: Image.asset(
+            'assets/edit_pencil.png',
+            width: 20,
+            height: 20,
+            color: Colors.grey.shade600,
+          ),
           onPressed: () async {
             final updated = await showModalBottomSheet<bool>(
               context: context,
               isScrollControlled: true,
               builder: (ctx) => Padding(
-                padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                ),
                 child: SizedBox(
                   height: MediaQuery.of(ctx).size.height * 0.85,
                   child: LessonQuizForm(lessonId: q.lessonId, initial: q),
@@ -388,7 +856,12 @@ class _QuizCardActions extends ConsumerWidget {
         ),
         IconButton(
           tooltip: 'Delete',
-          icon: const Icon(Icons.delete_outline),
+          icon: Image.asset(
+            'assets/delete.png',
+            width: 20,
+            height: 20,
+            color: Colors.red.shade600,
+          ),
           onPressed: () async {
             final confirm = await showDialog<bool>(
               context: context,
@@ -396,8 +869,14 @@ class _QuizCardActions extends ConsumerWidget {
                 title: const Text('Delete quiz?'),
                 content: const Text('This action cannot be undone.'),
                 actions: [
-                  TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-                  FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: const Text('Delete'),
+                  ),
                 ],
               ),
             );

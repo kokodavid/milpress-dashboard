@@ -14,36 +14,66 @@ class LessonsListScreen extends ConsumerWidget {
     final selectedCourse = ref.watch(selectedCourseProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Lessons')),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Row(
         children: [
-          // Selection header
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: CourseSelectionHeader(
-              selectedCourse: selectedCourse.asData?.value,
-              onClear: () {
-                ref.read(selectedCourseIdProvider.notifier).state = null;
-                ref.read(selectedLessonIdProvider.notifier).state = null;
-              },
-            ),
-          ),
-          const Divider(height: 1),
-          // Split view: left list, right detail
-          Expanded(
-            child: Row(
-              children: const [
-                SizedBox(
-                  width: 380,
-                  child: ModulesListForSelectedCourse(),
+          SizedBox(
+            width: 380,
+            child: Column(
+              children: [
+                // Course selection card
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Select course',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          CourseSelectionHeader(
+                            selectedCourse: selectedCourse.asData?.value,
+                            onClear: () {
+                              ref.read(selectedCourseIdProvider.notifier).state = null;
+                              ref.read(selectedLessonIdProvider.notifier).state = null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-                VerticalDivider(width: 1),
+                // Modules card
                 Expanded(
-                  child: SelectedLessonDetailPane(),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                    child: Card(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(
+                              'Module',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                          const Expanded(
+                            child: ModulesListForSelectedCourse(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
+          ),
+          const Expanded(
+            child: SelectedLessonDetailPane(),
           ),
         ],
       ),

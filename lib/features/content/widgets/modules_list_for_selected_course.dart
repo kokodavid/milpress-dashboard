@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:milpress_dashboard/utils/app_colors.dart';
 
 import '../../modules/modules_repository.dart';
 import '../../modules/create_module_form.dart';
@@ -32,69 +33,22 @@ class _ModulesListForSelectedCourseState extends ConsumerState<ModulesListForSel
         final nextPosition = modules.isEmpty ? 1 : (modules.last.position + 1);
         return Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      modules.isEmpty ? 'No modules yet for this course' : 'Modules',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  FilledButton.icon(
-                    onPressed: () async {
-                      await showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        builder: (ctx) => Padding(
-                          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-                          child: DraggableScrollableSheet(
-                            expand: false,
-                            initialChildSize: 0.8,
-                            minChildSize: 0.5,
-                            maxChildSize: 0.95,
-                            builder: (_, __) => CreateModuleForm(
-                              courseId: courseId,
-                              initialPosition: nextPosition,
-                              onCreated: () {
-                                // refresh after creation
-                                ref.invalidate(modulesForCourseProvider(courseId));
-                              },
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Module'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                itemCount: modules.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final m = modules[index];
-                  final isExpanded = _expanded.contains(m.id);
-                  return Card.filled(
-                    child: ExpansionTile(
-                      leading: CircleAvatar(child: Text('${m.position}')),
-                      title: Text('Module ${m.position}'),
-                      subtitle: (m.description != null && m.description!.isNotEmpty)
-                          ? Text(m.description!)
-                          : null,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (m.locked) const Tooltip(message: 'Locked', child: Icon(Icons.lock_outline)),
-                        ],
-                      ),
-                      initiallyExpanded: isExpanded,
+            if (modules.isEmpty)
+              const Expanded(
+                child: _CenteredHint(text: 'No modules yet for this course'),
+              )
+            else
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: modules.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final m = modules[index];
+                    final isExpanded = _expanded.contains(m.id);
+                    return _ModuleCard(
+                      module: m,
+                      isExpanded: isExpanded,
                       onExpansionChanged: (expanded) {
                         setState(() {
                           if (expanded) {
@@ -104,16 +58,45 @@ class _ModulesListForSelectedCourseState extends ConsumerState<ModulesListForSel
                           }
                         });
                       },
-                      childrenPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-                      children: [
-                        if (!isExpanded)
-                          const SizedBox.shrink()
-                        else
-                          _LessonsForModule(moduleId: m.id),
-                      ],
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
+              ),
+            // Add Module button at bottom
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    await showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (ctx) => Padding(
+                        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+                        child: DraggableScrollableSheet(
+                          expand: false,
+                          initialChildSize: 0.8,
+                          minChildSize: 0.5,
+                          maxChildSize: 0.95,
+                          builder: (_, __) => CreateModuleForm(
+                            courseId: courseId,
+                            initialPosition: nextPosition,
+                            onCreated: () {
+                              // refresh after creation
+                              ref.invalidate(modulesForCourseProvider(courseId));
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Module'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
               ),
             ),
           ],
@@ -128,81 +111,139 @@ class _ModulesListForSelectedCourseState extends ConsumerState<ModulesListForSel
   }
 }
 
-class _LessonsForModule extends ConsumerWidget {
-  const _LessonsForModule({required this.moduleId});
-  final String moduleId;
+class _ModuleCard extends ConsumerWidget {
+  const _ModuleCard({
+    required this.module,
+    required this.isExpanded,
+    required this.onExpansionChanged,
+  });
+
+  final dynamic module;
+  final bool isExpanded;
+  final ValueChanged<bool> onExpansionChanged;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lessonsAsync = ref.watch(lessonsForModuleProvider(moduleId));
-    return lessonsAsync.when(
-      data: (lessons) {
-        final nextPosition = lessons.isEmpty ? 1 : (lessons.last.position + 1);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final lessonsAsync = ref.watch(lessonsForModuleProvider(module.id));
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.copBlue,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Center(
+              child: Text(
+                '${module.position}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          title: Text('Module ${module.position}'),
+          subtitle: lessonsAsync.when(
+            data: (lessons) {
+              final lessonCount = lessons.length;
+              final lockedText = module.locked ? ' • 🔒 Locked' : '';
+              if (lessons.isEmpty) {
+                return Text('No lessons$lockedText');
+              }
+              final firstLesson = lessons.first.title;
+              final lastLesson = lessons.last.title;
+              final lessonRange = lessonCount == 1 
+                  ? firstLesson 
+                  : '$firstLesson - $lastLesson';
+              return Text('$lessonRange$lockedText');
+            },
+            loading: () => const Text('Loading...'),
+            error: (_, __) => const Text('Error loading lessons'),
+          ),
+          initiallyExpanded: isExpanded,
+          onExpansionChanged: onExpansionChanged,
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
-            Row(
-              children: [
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: () async {
-                    final created = await showModalBottomSheet<bool>(
-                      context: context,
-                      isScrollControlled: true,
-                      builder: (ctx) => Padding(
-                        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-                        child: SizedBox(
-                          height: MediaQuery.of(ctx).size.height * 0.85,
-                          child: _AddLessonSheet(
-                            moduleId: moduleId,
-                            initialPosition: nextPosition,
+            lessonsAsync.when(
+              data: (lessons) {
+                final nextPosition = lessons.isEmpty ? 1 : (lessons.last.position + 1);
+                return Column(
+                  children: [
+                    if (lessons.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Text('No lessons in this module'),
+                      )
+                    else
+                      ...lessons.map((lesson) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _LessonCard(lesson: lesson),
+                      )),
+                    const SizedBox(height: 8),
+                    // Add Lesson button
+                    SizedBox(
+                      width: double.infinity,
+                      child: CustomPaint(
+                        painter: DashedBorderPainter(color: AppColors.copBlue),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(4),
+                            onTap: () async {
+                              final created = await showModalBottomSheet<bool>(
+                                context: context,
+                                isScrollControlled: true,
+                                builder: (ctx) => Padding(
+                                  padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+                                  child: SizedBox(
+                                    height: MediaQuery.of(ctx).size.height * 0.85,
+                                    child: _AddLessonSheet(
+                                      moduleId: module.id,
+                                      initialPosition: nextPosition,
+                                    ),
+                                  ),
+                                ),
+                              );
+                              if (created == true) {
+                                ref.invalidate(lessonsForModuleProvider(module.id));
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.add, size: 16, color: AppColors.copBlue),
+                                  const SizedBox(width: 8),
+                                  Text('Add Lesson', style: TextStyle(color: AppColors.copBlue)),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    );
-                    if (created == true) {
-                      ref.invalidate(lessonsForModuleProvider(moduleId));
-                    }
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Lesson'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (lessons.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('No lessons in this module'),
-                ),
-              )
-            else
-              ...[
-                for (final l in lessons) _LessonRow(lesson: l),
-              ],
-          ],
-        );
-      },
-      loading: () => const Padding(
-        padding: EdgeInsets.all(12.0),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
-      ),
-      error: (e, st) => Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red),
-            const SizedBox(width: 8),
-            const Expanded(child: Text('Failed to load lessons')),
-            TextButton.icon(
-              onPressed: () => ref.refresh(lessonsForModuleProvider(moduleId)),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
+                    ),
+                  ],
+                );
+              },
+              loading: () => const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (e, st) => Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('Error: $e'),
+              ),
             ),
           ],
         ),
@@ -358,29 +399,34 @@ class _AddLessonSheetState extends ConsumerState<_AddLessonSheet> {
   }
 }
 
-class _LessonRow extends ConsumerWidget {
-  const _LessonRow({required this.lesson});
+class _LessonCard extends ConsumerWidget {
+  const _LessonCard({required this.lesson});
   final Lesson lesson;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 0.0),
-      leading: const SizedBox(width: 4),
-      title: Text(lesson.title),
-      subtitle: Row(
-        children: [
-          Text('Position ${lesson.position}'),
-          if (lesson.durationMinutes != null) ...[
-            const SizedBox(width: 12),
-            Text('${lesson.durationMinutes} min'),
-          ],
-        ],
+    final selectedLessonId = ref.watch(selectedLessonIdProvider);
+    final isSelected = selectedLessonId == lesson.id;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isSelected ? AppColors.primaryColor : Colors.grey.shade200,
+          width: isSelected ? 2 : 1,
+        ),
       ),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () {
-        ref.read(selectedLessonIdProvider.notifier).state = lesson.id;
-      },
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+        title: Text(lesson.title),
+        trailing: lesson.durationMinutes != null 
+            ? Text('${lesson.durationMinutes}min', style: TextStyle(color: Colors.grey.shade600))
+            : null,
+        onTap: () {
+          ref.read(selectedLessonIdProvider.notifier).state = lesson.id;
+        },
+      ),
     );
   }
 }
@@ -425,4 +471,50 @@ class _ErrorRetry extends StatelessWidget {
       ),
     );
   }
+}
+
+class DashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final double dashWidth;
+  final double dashSpace;
+
+  DashedBorderPainter({
+    required this.color,
+    this.strokeWidth = 1.0,
+    this.dashWidth = 5.0,
+    this.dashSpace = 3.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        const Radius.circular(4),
+      ));
+
+    final dashPath = Path();
+    for (final pathMetric in path.computeMetrics()) {
+      double distance = 0.0;
+      while (distance < pathMetric.length) {
+        final extractPath = pathMetric.extractPath(
+          distance,
+          distance + dashWidth,
+        );
+        dashPath.addPath(extractPath, Offset.zero);
+        distance += dashWidth + dashSpace;
+      }
+    }
+
+    canvas.drawPath(dashPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

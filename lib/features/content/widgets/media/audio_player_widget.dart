@@ -2,6 +2,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../secrets.dart';
+import '../../../../utils/app_colors.dart';
 
 class LessonAudioPlayer extends StatefulWidget {
   const LessonAudioPlayer({super.key, required this.url});
@@ -74,6 +75,7 @@ class _LessonAudioPlayerState extends State<LessonAudioPlayer> {
             Expanded(
               child: Slider(
                 value: progress.isNaN ? 0.0 : progress.clamp(0.0, 1.0),
+                activeColor: AppColors.primaryColor,
                 onChanged: (v) async {
                   if (_dur.inMilliseconds > 0) {
                     final newPos = Duration(milliseconds: (_dur.inMilliseconds * v).round());

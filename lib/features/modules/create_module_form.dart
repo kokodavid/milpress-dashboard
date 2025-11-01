@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:milpress_dashboard/utils/app_colors.dart';
 
 import '../../widgets/app_text_form_field.dart';
+import '../../widgets/app_button.dart';
 import 'modules_model.dart';
 import 'modules_repository.dart';
 
@@ -97,75 +99,107 @@ class _CreateModuleFormState extends ConsumerState<CreateModuleForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Form(
-      key: _formKey,
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Create Module',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 16),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                ),
-              AppTextFormField(
-                controller: _descriptionController,
-                label: 'Title',
-                maxLines: 1,
-                validator: (v) => null,
-              ),
-              const SizedBox(height: 12),
+              // Header with title and close button
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: AppTextFormField(
-                      controller: _positionController,
-                      label: 'Position',
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Position is required';
-                        }
-                        final parsed = int.tryParse(value);
-                        if (parsed == null || parsed < 1) {
-                          return 'Enter a valid position (>=1)';
-                        }
-                        return null;
-                      },
+                  const Text(
+                    'Add Module',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppTextFormField(
-                      controller: _durationController,
-                      label: 'Duration (min)',
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return null;
-                        }
-                        final parsed = int.tryParse(value);
-                        if (parsed == null || parsed < 1) {
-                          return 'Enter a valid duration (>=1)';
-                        }
-                        return null;
-                      },
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.grey.shade100,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 24),
+              
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Text(
+                      _error!,
+                      style: TextStyle(color: Colors.red.shade700),
+                    ),
+                  ),
+                ),
+
+              // Module Title
+              AppTextFormField(
+                controller: _descriptionController,
+                label: 'Module Title*',
+                hintText: 'Enter module title',
+                maxLines: 1,
+                validator: (v) => v == null || v.trim().isEmpty ? 'Module title is required' : null,
+              ),
+              const SizedBox(height: 10),
+
+              // Position
+              AppTextFormField(
+                controller: _positionController,
+                label: 'Position',
+                hintText: 'Course type i.e word',
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Position is required';
+                  }
+                  final parsed = int.tryParse(value);
+                  if (parsed == null || parsed < 1) {
+                    return 'Enter a valid position (>=1)';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 10),
+
+              // Duration in minutes
+              AppTextFormField(
+                controller: _durationController,
+                label: 'Duration in (minutes)',
+                hintText: '00 minutes',
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return null;
+                  }
+                  final parsed = int.tryParse(value);
+                  if (parsed == null || parsed < 1) {
+                    return 'Enter a valid duration (>=1)';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 10),
+
+              // Lock checkbox
               Row(
                 children: [
                   Checkbox(
@@ -175,36 +209,56 @@ class _CreateModuleFormState extends ConsumerState<CreateModuleForm> {
                         _locked = value ?? false;
                       });
                     },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
-                  const Text('Locked'),
+                  const Text(
+                    'Lock this course',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
+                  ),
                 ],
               ),
+              
               if (_locked) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 AppTextFormField(
                   controller: _lockMessageController,
                   label: 'Lock message',
+                  hintText: 'Enter lock message',
                   maxLines: 2,
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: 32),
+
+              // Action buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
-                    onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                  SizedBox(
+                    width: 100,
+                    child: AppButton(
+                      label: 'Cancel',
+                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                      outlined: true,
+                      backgroundColor: Colors.grey,
+                      textColor: Colors.grey,
+                      height: 44,
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _submit,
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Create Module'),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 150,
+                    child: AppButton(
+                      label: _isLoading ? 'Creating...' : 'Create Module',
+                      onPressed: _isLoading ? null : _submit,
+                      backgroundColor: AppColors.primaryColor,
+                      textColor: Colors.white,
+                      height: 44,
+                    ),
                   ),
                 ],
               ),

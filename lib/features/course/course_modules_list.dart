@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:milpress_dashboard/utils/app_colors.dart';
 
 import '../modules/modules_repository.dart';
 
@@ -24,9 +25,8 @@ class CourseModulesList extends ConsumerWidget {
         if (modules.isEmpty) {
           return const Center(child: Text('No modules for this course'));
         }
-        return ListView.separated(
+        return ListView.builder(
           itemCount: modules.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final m = modules[index];
             return ModuleWithLessonsDropdown(module: m);
@@ -42,10 +42,12 @@ class ModuleWithLessonsDropdown extends ConsumerStatefulWidget {
   const ModuleWithLessonsDropdown({super.key, required this.module});
 
   @override
-  ConsumerState<ModuleWithLessonsDropdown> createState() => _ModuleWithLessonsDropdownState();
+  ConsumerState<ModuleWithLessonsDropdown> createState() =>
+      _ModuleWithLessonsDropdownState();
 }
 
-class _ModuleWithLessonsDropdownState extends ConsumerState<ModuleWithLessonsDropdown> {
+class _ModuleWithLessonsDropdownState
+    extends ConsumerState<ModuleWithLessonsDropdown> {
   bool _expanded = false;
 
   @override
@@ -54,40 +56,201 @@ class _ModuleWithLessonsDropdownState extends ConsumerState<ModuleWithLessonsDro
     final lessonsAsync = ref.watch(lessonsForModuleProvider(module.id));
     int? lessonCount;
     lessonsAsync.whenData((lessons) => lessonCount = lessons.length);
-    return Column(
-      children: [
-        ListTile(
-          leading: CircleAvatar(child: Text('${module.position}')),
-          title: Text(module.description?.isNotEmpty == true ? module.description! : 'Module ${module.position}'),
-          subtitle: Wrap(
-            spacing: 12,
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
             children: [
-              if (module.durationMinutes != null)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+              // Numbered circle
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.copBlue,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    '${module.position}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Module title and metadata
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.schedule, size: 14),
-                    const SizedBox(width: 4),
-                    Text('${module.durationMinutes} min'),
+                    Text(
+                      module.description?.isNotEmpty == true
+                          ? module.description!
+                          : 'Module ${module.position}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        if (lessonCount != null) ...[
+                          Icon(Icons.circle, size: 12, color: AppColors.grey),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$lessonCount Lesson${lessonCount == 1 ? '' : 's'}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.grey,
+                            ),
+                          ),
+                        ],
+                        if (module.durationMinutes != null) ...[
+                          const SizedBox(width: 16),
+                          Icon(
+                            Icons.access_time,
+                            size: 16,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${module.durationMinutes} min',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                        if (module.locked) ...[
+                          const SizedBox(width: 16),
+                          Icon(
+                            Icons.lock,
+                            size: 16,
+                            color: Colors.orange.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Locked',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.orange.shade600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
-              if (module.locked)
-                const Chip(label: Text('Locked')),
-              if (lessonCount != null)
-                Chip(label: Text('$lessonCount lesson${lessonCount == 1 ? '' : 's'}')),
+              ),
+
+              // Action buttons
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      // TODO: Add edit functionality
+                    },
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.faintGrey,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: ColorFiltered(
+                            colorFilter: ColorFilter.mode(
+                              Colors.grey.shade600,
+                              BlendMode.srcIn,
+                            ),
+                            child: Image.asset(
+                              'assets/edit_pencil.png',
+                              width: 18,
+                              height: 18,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      // TODO: Add delete functionality
+                    },
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.faintGrey,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: ColorFiltered(
+                            colorFilter: ColorFilter.mode(
+                              Colors.red.shade600,
+                              BlendMode.srcIn,
+                            ),
+                            child: Image.asset(
+                              'assets/delete.png',
+                              width: 18,
+                              height: 18,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(
+                      _expanded ? Icons.expand_less : Icons.expand_more,
+                    ),
+                    onPressed: () => setState(() => _expanded = !_expanded),
+                    color: Colors.grey.shade600,
+                  ),
+                ],
+              ),
             ],
           ),
-          trailing: IconButton(
-            icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
-            onPressed: () => setState(() => _expanded = !_expanded),
-          ),
-        ),
-        if (_expanded)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: LessonsDropdown(moduleId: module.id),
-          ),
-      ],
+          if (_expanded) ...[
+            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            LessonsDropdown(moduleId: module.id),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -113,12 +276,15 @@ class LessonsDropdown extends ConsumerWidget {
           return const Text('No lessons in this module');
         }
         return SizedBox(
-          height: 100,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: lessons.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) => LessonCard(lesson: lessons[index]),
+          height: 160,
+          child: Scrollbar(
+            thumbVisibility: true,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: lessons.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) => LessonCard(lesson: lessons[index]),
+            ),
           ),
         );
       },
@@ -132,64 +298,109 @@ class LessonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
+      width: 180,
       margin: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.grey.shade300,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Row(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Thumbnail
-            if (lesson.thumbnails != null && lesson.thumbnails.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  lesson.thumbnails,
-                  width: 80,
-                  height: 60,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    width: 80,
-                    height: 60,
-                    color: Colors.grey[300],
-                    child: const Icon(Icons.image_not_supported),
-                  ),
-                ),
-              )
-            else
-              Container(
-                width: 80,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.image, color: Colors.grey, size: 32),
-              ),
-            const SizedBox(width: 16),
-            // Title & Duration
             Container(
-              width: 140,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    lesson.title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  if (lesson.durationMinutes != null)
-                    Row(
-                      children: [
-                        const Icon(Icons.schedule, size: 16),
-                        const SizedBox(width: 4),
-                        Text('${lesson.durationMinutes} min'),
-                      ],
+              width: double.infinity,
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: lesson.thumbnails != null && lesson.thumbnails.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        lesson.thumbnails,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Text(
+                              lesson.title.split(' ').first,
+                              style: TextStyle(
+                                color: Colors.purple.shade700,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : Container(
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          lesson.title.split(' ').first,
+                          style: TextStyle(
+                            color: Colors.purple.shade700,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
                     ),
+            ),
+            const SizedBox(height: 8),
+            // Title
+            Text(
+              lesson.title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            // Duration
+            if (lesson.durationMinutes != null)
+              Row(
+                children: [
+                  Icon(
+                    Icons.access_time,
+                    size: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${lesson.durationMinutes} min',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
                 ],
               ),
-            ),
           ],
         ),
       ),

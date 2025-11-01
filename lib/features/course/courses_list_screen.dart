@@ -5,16 +5,7 @@ import 'course_repository.dart';
 import 'create_course_form.dart';
 import 'course_detail_view.dart';
 import '../../widgets/search_input.dart';
-
-String _fmtDateTime(DateTime dt) {
-  final local = dt.toLocal();
-  final y = local.year.toString().padLeft(4, '0');
-  final m = local.month.toString().padLeft(2, '0');
-  final d = local.day.toString().padLeft(2, '0');
-  final hh = local.hour.toString().padLeft(2, '0');
-  final mm = local.minute.toString().padLeft(2, '0');
-  return '$y-$m-$d $hh:$mm';
-}
+import '../../utils/app_colors.dart';
 
 class CoursesListScreen extends ConsumerWidget {
   const CoursesListScreen({super.key});
@@ -31,16 +22,6 @@ class CoursesListScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Courses'),
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: () => refreshCourses(),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
       body: coursesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(
@@ -56,14 +37,16 @@ class CoursesListScreen extends ConsumerWidget {
                 Text(
                   err.toString(),
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[700]),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey[700]),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: refreshCourses,
                   icon: const Icon(Icons.refresh),
                   label: const Text('Retry'),
-                )
+                ),
               ],
             ),
           ),
@@ -83,34 +66,52 @@ class CoursesListScreen extends ConsumerWidget {
           return Row(
             children: [
               Expanded(
-                flex: 2,
-                child: RefreshIndicator(
-                  onRefresh: refreshCourses,
-                  child: Builder(
+                flex: 30,
+                child: Container(
+                  margin: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.faintGrey,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.borderColor,
+                      width: 1,
+                    ),
+                  ),
+                  child: RefreshIndicator(
+                    onRefresh: refreshCourses,
+                    child: Builder(
                     builder: (context) {
                       final query = searchQuery.trim().toLowerCase();
-            final List<Course> filteredCourses = query.isEmpty
+                      final List<Course> filteredCourses = query.isEmpty
                           ? courses
                           : courses
-                              .where((course) => course.title.toLowerCase().contains(query))
-                              .toList();
+                                .where(
+                                  (course) => course.title
+                                      .toLowerCase()
+                                      .contains(query),
+                                )
+                                .toList();
 
                       final items = <Widget>[
                         Padding(
                           padding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
                           child: SearchInput(
-                            hintText: 'Search courses',
+                            hintText: 'Search',
                             initialValue: searchQuery,
-                            onChanged: (value) => ref.read(_courseSearchQueryProvider.notifier).state = value,
+                            onChanged: (value) =>
+                                ref
+                                        .read(
+                                          _courseSearchQueryProvider.notifier,
+                                        )
+                                        .state =
+                                    value,
                           ),
                         ),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                           child: Text(
                             'Showing ${filteredCourses.length} of ${courses.length} courses',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: Colors.grey[600]),
                           ),
                         ),
@@ -120,11 +121,18 @@ class CoursesListScreen extends ConsumerWidget {
                       if (filteredCourses.isEmpty) {
                         items.add(
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 48),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 48,
+                            ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.search_off, size: 36, color: Colors.grey),
+                                const Icon(
+                                  Icons.search_off,
+                                  size: 36,
+                                  color: Colors.grey,
+                                ),
                                 const SizedBox(height: 12),
                                 Text(
                                   'No courses match your search.',
@@ -134,7 +142,13 @@ class CoursesListScreen extends ConsumerWidget {
                                 const SizedBox(height: 12),
                                 OutlinedButton.icon(
                                   onPressed: () =>
-                                      ref.read(_courseSearchQueryProvider.notifier).state = '',
+                                      ref
+                                              .read(
+                                                _courseSearchQueryProvider
+                                                    .notifier,
+                                              )
+                                              .state =
+                                          '',
                                   icon: const Icon(Icons.refresh),
                                   label: const Text('Clear search'),
                                 ),
@@ -148,110 +162,142 @@ class CoursesListScreen extends ConsumerWidget {
                           final isSelected = selectedCourseId == course.id;
                           items.add(
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 180),
                                 curve: Curves.easeOut,
                                 decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Theme.of(context).colorScheme.primary.withAlpha(12)
-                                      : Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     color: isSelected
-                                        ? Theme.of(context).colorScheme.primary
+                                        ? AppColors.primaryColor
                                         : Colors.grey.shade300,
                                     width: isSelected ? 2 : 1,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withAlpha(12),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
+                                      color: Colors.black.withAlpha(8),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
                                     ),
                                   ],
                                 ),
                                 child: InkWell(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(12),
                                   onTap: () {
-                                    ref.read(_selectedCourseIdProvider.notifier).state = course.id;
+                                    ref
+                                        .read(
+                                          _selectedCourseIdProvider.notifier,
+                                        )
+                                        .state = course
+                                        .id;
                                   },
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                                    child: Row(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        CircleAvatar(
-                                          radius: 24,
-                                          backgroundColor:
-                                              Theme.of(context).colorScheme.primary.withAlpha(30),
+                                        // Course title
+                                        Text(
+                                          course.title,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.darkGrey,
+                                                fontSize: 16,
+                                              ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 8),
+
+                                        // Status badge
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: course.locked 
+                                                ? Colors.orange.shade100
+                                                : Colors.green.shade100,
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
                                           child: Text(
-                                            _initials(course.title),
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18,
+                                            course.locked ? 'Draft' : 'Published',
+                                            style: TextStyle(
+                                              color: course.locked 
+                                                  ? Colors.orange.shade700
+                                                  : Colors.green.shade700,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 18),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                course.title,
-                                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                                      fontWeight: FontWeight.w600,
-                                                      color: isSelected
-                                                          ? Theme.of(context).colorScheme.primary
-                                                          : Colors.black87,
-                                                    ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
+                                        const SizedBox(height: 12),
+
+                                        // Meta information row
+                                        Row(
+                                          children: [
+                                            if (course.type != null &&
+                                                course.type!.isNotEmpty) ...[
+                                              Icon(
+                                                Icons.circle,
+                                                size: 12,
+                                                color: AppColors.grey,
                                               ),
-                                              const SizedBox(height: 6),
-                                              Wrap(
-                                                spacing: 10,
-                                                runSpacing: 4,
-                                                crossAxisAlignment: WrapCrossAlignment.center,
-                                                children: [
-                                                  if (course.type != null && course.type!.isNotEmpty)
-                                                    _metaChip(
-                                                      context,
-                                                      Icons.category_outlined,
-                                                      course.type!,
-                                                    ),
-                                                  if (course.level != null)
-                                                    _metaChip(
-                                                      context,
-                                                      Icons.stacked_bar_chart_outlined,
-                                                      'Level ${course.level}',
-                                                    ),
-                                                  if (course.durationInMinutes != null)
-                                                    _metaChip(
-                                                      context,
-                                                      Icons.schedule,
-                                                      '${course.durationInMinutes} min',
-                                                    ),
-                                                  if (course.updatedAt != null)
-                                                    _metaChip(
-                                                      context,
-                                                      Icons.update,
-                                                      _fmtDateTime(course.updatedAt!),
-                                                    ),
-                                                ],
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                course.type!,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 16),
+                                            ],
+                                            if (course.durationInMinutes !=
+                                                null) ...[
+                                              Icon(
+                                                Icons.access_time,
+                                                size: 16,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                '${course.durationInMinutes} min',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 16),
+                                            ],
+                                            if (course.locked) ...[
+                                              Icon(
+                                                Icons.lock_outline,
+                                                size: 16,
+                                                color: AppColors.primaryColor,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Locked',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.orange.shade600,
+                                                ),
                                               ),
                                             ],
-                                          ),
+                                          ],
                                         ),
-                                        if (course.locked)
-                                          Padding(
-                                            padding: const EdgeInsets.only(left: 12.0),
-                                            child: Icon(
-                                              Icons.lock_outline,
-                                              size: 22,
-                                              color: Colors.grey[600],
-                                            ),
-                                          ),
                                       ],
                                     ),
                                   ),
@@ -276,12 +322,34 @@ class CoursesListScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              const VerticalDivider(width: 1),
+              ),
               Expanded(
-                flex: 3,
+                flex: 70,
                 child: selectedCourseId == null
-                    ? const Center(
-                        child: Text('Select a course to view details'),
+                    ? Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.faintGrey,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey.shade200,
+                              width: 1,
+                            ),
+                          ),
+                          child: const Text(
+                            'Select Course to view\ndetails',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.black87,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
                       )
                     : CourseDetailView(
                         course: courses.firstWhere(
@@ -292,7 +360,8 @@ class CoursesListScreen extends ConsumerWidget {
                         },
                         onDeleted: () async {
                           // Clear selection and refresh list
-                          ref.read(_selectedCourseIdProvider.notifier).state = null;
+                          ref.read(_selectedCourseIdProvider.notifier).state =
+                              null;
                           await refreshCourses();
                         },
                       ),
@@ -321,27 +390,15 @@ class CoursesListScreen extends ConsumerWidget {
         },
         icon: const Icon(Icons.add),
         label: const Text('Create Course'),
+        extendedTextStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          color: Colors.white
+        ),
+        backgroundColor: AppColors.primaryColor,
       ),
-    );
-  }
-
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r"\s+"));
-    if (parts.isEmpty) return '?';
-    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-    return (parts[0].isNotEmpty ? parts[0][0] : '') + (parts[1].isNotEmpty ? parts[1][0] : '');
-  }
-
-  Widget _metaChip(BuildContext context, IconData icon, String label) {
-    return Chip(
-      visualDensity: VisualDensity.compact,
-      padding: EdgeInsets.zero,
-      avatar: Icon(icon, size: 14),
-      label: Text(label),
     );
   }
 }
 
 final _selectedCourseIdProvider = StateProvider<String?>((ref) => null);
 final _courseSearchQueryProvider = StateProvider<String>((ref) => '');
-

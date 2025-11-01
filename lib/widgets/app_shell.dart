@@ -11,8 +11,24 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
+    
+    String getPageTitle(String route) {
+      switch (route) {
+        case '/dashboard':
+          return 'Dashboard';
+        case '/courses':
+          return 'Courses';
+        case '/lessons':
+          return 'Lessons';
+        case '/settings':
+          return 'Settings';
+        default:
+          return 'Dashboard';
+      }
+    }
+    
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8FF),
+      backgroundColor: const Color(0xFFFFFFFF),
       body: Row(
         children: [
           AppSidebar(selectedRoute: location),
@@ -36,8 +52,16 @@ class AppShell extends StatelessWidget {
                     ],
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
+                      // Page Title
+                      Text(
+                        getPageTitle(location),
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const Spacer(),
                       Flexible(
                         fit: FlexFit.loose,
                         child: ConstrainedBox(

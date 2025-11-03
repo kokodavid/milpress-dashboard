@@ -1,263 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:milpress_dashboard/utils/app_colors.dart';
 
-import '../../modules/modules_repository.dart';
-import '../../modules/create_module_form.dart';
 import '../../lesson/lessons_repository.dart';
 import '../../lesson/lesson_models.dart';
-import '../state/lessons_list_controller.dart';
-import '../../../widgets/app_button.dart';
 
-class ModulesListForSelectedCourse extends ConsumerStatefulWidget {
-  const ModulesListForSelectedCourse({super.key});
-
-  @override
-  ConsumerState<ModulesListForSelectedCourse> createState() => _ModulesListForSelectedCourseState();
+// Export the edit lesson dialog function
+Future<void> showEditLessonDialog({
+  required BuildContext context,
+  required WidgetRef ref,
+  required dynamic lesson,
+  required VoidCallback onUpdated,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (context) => EditLessonDialog(
+      lesson: lesson,
+      onUpdated: onUpdated,
+    ),
+  );
 }
 
-class _ModulesListForSelectedCourseState extends ConsumerState<ModulesListForSelectedCourse> {
-  final Set<String> _expanded = <String>{};
-
-  @override
-  Widget build(BuildContext context) {
-    final courseId = ref.watch(selectedCourseIdProvider);
-
-    if (courseId == null) {
-      return const _CenteredHint(text: 'Select a course to view modules and lessons');
-    }
-
-    final modulesAsync = ref.watch(modulesForCourseProvider(courseId));
-
-    return modulesAsync.when(
-      data: (modules) {
-        final nextPosition = modules.isEmpty ? 1 : (modules.last.position + 1);
-        return Column(
-          children: [
-            if (modules.isEmpty)
-              const Expanded(
-                child: _CenteredHint(text: 'No modules yet for this course'),
-              )
-            else
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: modules.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final m = modules[index];
-                    final isExpanded = _expanded.contains(m.id);
-                    return _ModuleCard(
-                      module: m,
-                      isExpanded: isExpanded,
-                      onExpansionChanged: (expanded) {
-                        setState(() {
-                          if (expanded) {
-                            _expanded.add(m.id);
-                          } else {
-                            _expanded.remove(m.id);
-                          }
-                        });
-                      },
-                    );
-                  },
-                ),
-              ),
-            // Add Module button at bottom
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: AppButton(
-                label: 'Add Module',
-                backgroundColor: AppColors.primaryColor,
-                onPressed: () async {
-                  final created = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => CreateModuleForm(
-                      courseId: courseId,
-                      initialPosition: nextPosition,
-                      onCreated: () {
-                        // refresh after creation
-                        ref.invalidate(modulesForCourseProvider(courseId));
-                      },
-                    ),
-                  );
-                  if (created == true) {
-                    // Additional handling if needed
-                  }
-                },
-              ),
-            ),
-          ],
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => _ErrorRetry(
-        message: 'Failed to load modules',
-        onRetry: () => ref.refresh(modulesForCourseProvider(courseId)),
-      ),
-    );
-  }
-}
-
-class _ModuleCard extends ConsumerWidget {
-  const _ModuleCard({
-    required this.module,
-    required this.isExpanded,
-    required this.onExpansionChanged,
+// Export the EditLessonDialog class 
+class EditLessonDialog extends ConsumerStatefulWidget {
+  const EditLessonDialog({
+    super.key, 
+    required this.lesson,
+    required this.onUpdated,
   });
-
-  final dynamic module;
-  final bool isExpanded;
-  final ValueChanged<bool> onExpansionChanged;
+  final dynamic lesson;
+  final VoidCallback onUpdated;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final lessonsAsync = ref.watch(lessonsForModuleProvider(module.id));
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          leading: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.copBlue,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Center(
-              child: Text(
-                '${module.position}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          title: Text('Module ${module.position}'),
-          subtitle: lessonsAsync.when(
-            data: (lessons) {
-              final lessonCount = lessons.length;
-              final lockedText = module.locked ? ' • 🔒 Locked' : '';
-              if (lessons.isEmpty) {
-                return Text('No lessons$lockedText');
-              }
-              final firstLesson = lessons.first.title;
-              final lastLesson = lessons.last.title;
-              final lessonRange = lessonCount == 1 
-                  ? firstLesson 
-                  : '$firstLesson - $lastLesson';
-              return Text('$lessonRange$lockedText');
-            },
-            loading: () => const Text('Loading...'),
-            error: (_, __) => const Text('Error loading lessons'),
-          ),
-          initiallyExpanded: isExpanded,
-          onExpansionChanged: onExpansionChanged,
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          children: [
-            lessonsAsync.when(
-              data: (lessons) {
-                final nextPosition = lessons.isEmpty ? 1 : (lessons.last.position + 1);
-                return Column(
-                  children: [
-                    if (lessons.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Text('No lessons in this module'),
-                      )
-                    else
-                      ...lessons.map((lesson) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _LessonCard(lesson: lesson),
-                      )),
-                    const SizedBox(height: 8),
-                    // Add Lesson button
-                    SizedBox(
-                      width: double.infinity,
-                      child: CustomPaint(
-                        painter: DashedBorderPainter(color: AppColors.copBlue),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(4),
-                            onTap: () async {
-                              final created = await showDialog<bool>(
-                                context: context,
-                                builder: (ctx) => _AddLessonDialog(
-                                  moduleId: module.id,
-                                  initialPosition: nextPosition,
-                                ),
-                              );
-                              if (created == true) {
-                                ref.invalidate(lessonsForModuleProvider(module.id));
-                              }
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add, size: 16, color: AppColors.copBlue),
-                                  const SizedBox(width: 8),
-                                  Text('Add Lesson', style: TextStyle(color: AppColors.copBlue)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-              loading: () => const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (e, st) => Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('Error: $e'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  ConsumerState<EditLessonDialog> createState() => _EditLessonDialogState();
 }
 
-class _AddLessonDialog extends ConsumerStatefulWidget {
-  const _AddLessonDialog({required this.moduleId, required this.initialPosition});
-  final String moduleId;
-  final int initialPosition;
-
-  @override
-  ConsumerState<_AddLessonDialog> createState() => _AddLessonDialogState();
-}
-
-class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
+class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _titleCtrl = TextEditingController();
+  late final TextEditingController _titleCtrl;
   late final TextEditingController _positionCtrl;
-  final _durationCtrl = TextEditingController();
-  final _videoCtrl = TextEditingController();
-  final _audioCtrl = TextEditingController();
-  final _thumbCtrl = TextEditingController();
-  final _contentCtrl = TextEditingController();
+  late final TextEditingController _durationCtrl;
+  late final TextEditingController _videoCtrl;
+  late final TextEditingController _audioCtrl;
+  late final TextEditingController _thumbCtrl;
+  late final TextEditingController _contentCtrl;
   bool _submitting = false;
-  int _selectedLevel = 1;
+  late int _selectedLevel;
 
   @override
   void initState() {
     super.initState();
-    _positionCtrl = TextEditingController(text: widget.initialPosition.toString());
+    _titleCtrl = TextEditingController(text: widget.lesson.title);
+    _positionCtrl = TextEditingController(text: widget.lesson.position.toString());
+    _durationCtrl = TextEditingController(text: widget.lesson.durationMinutes?.toString() ?? '');
+    _videoCtrl = TextEditingController(text: widget.lesson.videoUrl ?? '');
+    _audioCtrl = TextEditingController(text: widget.lesson.audioUrl ?? '');
+    _thumbCtrl = TextEditingController(text: widget.lesson.thumbnails ?? '');
+    _contentCtrl = TextEditingController(text: widget.lesson.content ?? '');
+    // Parse level from string to int, default to 1 if not found or invalid
+    _selectedLevel = int.tryParse(widget.lesson.level ?? '1') ?? 1;
   }
 
   @override
@@ -292,7 +92,7 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Add Lesson',
+                  'Edit Lesson',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -371,7 +171,7 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
                                 TextFormField(
                                   controller: _positionCtrl,
                                   decoration: InputDecoration(
-                                    hintText: 'Enter level (e.g 1)',
+                                    hintText: 'Enter position',
                                     hintStyle: TextStyle(color: Colors.grey.shade400),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(8),
@@ -418,7 +218,7 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
                                 DropdownButtonFormField<int>(
                                   value: _selectedLevel,
                                   decoration: InputDecoration(
-                                    hintText: 'Enter level (e.g 1)',
+                                    hintText: 'Select level',
                                     hintStyle: TextStyle(color: Colors.grey.shade400),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(8),
@@ -707,7 +507,7 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
                             ),
                           )
                         : const Text(
-                            'Create Lesson',
+                            'Update Lesson',
                             style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                   ),
@@ -725,10 +525,11 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
     final title = _titleCtrl.text.trim();
     final pos = int.parse(_positionCtrl.text.trim());
     final duration = _durationCtrl.text.trim().isEmpty ? null : int.tryParse(_durationCtrl.text.trim());
+    
     setState(() => _submitting = true);
     try {
-      final input = LessonCreate(
-        moduleId: widget.moduleId,
+      // Create LessonUpdate object
+      final update = LessonUpdate(
         title: title,
         position: pos,
         content: _contentCtrl.text.trim().isEmpty ? null : _contentCtrl.text.trim(),
@@ -736,136 +537,28 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
         audioUrl: _audioCtrl.text.trim().isEmpty ? null : _audioCtrl.text.trim(),
         durationMinutes: duration,
         thumbnails: _thumbCtrl.text.trim().isEmpty ? null : _thumbCtrl.text.trim(),
+        level: _selectedLevel.toString(),
       );
-      await ref.read(createLessonProvider.notifier).create(input);
-      if (mounted) Navigator.of(context).pop(true);
+      
+      // Call the update lesson provider
+      await ref.read(updateLessonProvider.notifier).update(widget.lesson.id, update);
+      
+      if (mounted) {
+        // Call the onUpdated callback to refresh the UI
+        widget.onUpdated();
+        
+        Navigator.of(context).pop(true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lesson updated successfully')),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create lesson: $e')),
+        SnackBar(content: Text('Failed to update lesson: $e')),
       );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
-}
-
-class _LessonCard extends ConsumerWidget {
-  const _LessonCard({required this.lesson});
-  final Lesson lesson;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selectedLessonId = ref.watch(selectedLessonIdProvider);
-    final isSelected = selectedLessonId == lesson.id;
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: isSelected ? AppColors.primaryColor : Colors.grey.shade200,
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-        title: Text(lesson.title),
-        trailing: lesson.durationMinutes != null 
-            ? Text('${lesson.durationMinutes}min', style: TextStyle(color: Colors.grey.shade600))
-            : null,
-        onTap: () {
-          ref.read(selectedLessonIdProvider.notifier).state = lesson.id;
-        },
-      ),
-    );
-  }
-}
-
-class _CenteredHint extends StatelessWidget {
-  const _CenteredHint({required this.text});
-  final String text;
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Text(text, textAlign: TextAlign.center),
-      ),
-    );
-  }
-}
-
-class _ErrorRetry extends StatelessWidget {
-  const _ErrorRetry({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red),
-            const SizedBox(height: 8),
-            Text(message),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class DashedBorderPainter extends CustomPainter {
-  final Color color;
-  final double strokeWidth;
-  final double dashWidth;
-  final double dashSpace;
-
-  DashedBorderPainter({
-    required this.color,
-    this.strokeWidth = 1.0,
-    this.dashWidth = 5.0,
-    this.dashSpace = 3.0,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-
-    final path = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, 0, size.width, size.height),
-        const Radius.circular(4),
-      ));
-
-    final dashPath = Path();
-    for (final pathMetric in path.computeMetrics()) {
-      double distance = 0.0;
-      while (distance < pathMetric.length) {
-        final extractPath = pathMetric.extractPath(
-          distance,
-          distance + dashWidth,
-        );
-        dashPath.addPath(extractPath, Offset.zero);
-        distance += dashWidth + dashSpace;
-      }
-    }
-
-    canvas.drawPath(dashPath, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -37,8 +37,14 @@ class LessonsListScreen extends ConsumerWidget {
                           CourseSelectionHeader(
                             selectedCourse: selectedCourse.asData?.value,
                             onClear: () {
-                              ref.read(selectedCourseIdProvider.notifier).state = null;
-                              ref.read(selectedLessonIdProvider.notifier).state = null;
+                              ref
+                                      .read(selectedCourseIdProvider.notifier)
+                                      .state =
+                                  null;
+                              ref
+                                      .read(selectedLessonIdProvider.notifier)
+                                      .state =
+                                  null;
                             },
                           ),
                         ],
@@ -61,9 +67,7 @@ class LessonsListScreen extends ConsumerWidget {
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                           ),
-                          const Expanded(
-                            child: ModulesListForSelectedCourse(),
-                          ),
+                          const Expanded(child: ModulesListForSelectedCourse()),
                         ],
                       ),
                     ),
@@ -72,15 +76,8 @@ class LessonsListScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const Expanded(
-            child: SelectedLessonDetailPane(),
-          ),
+          const Expanded(child: SelectedLessonDetailPane()),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: selectedCourse.asData?.value == null ? null : () {},
-        icon: const Icon(Icons.add),
-        label: const Text('Create Lesson'),
       ),
     );
   }

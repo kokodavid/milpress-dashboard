@@ -5,6 +5,7 @@ import 'course_repository.dart';
 import 'create_course_form.dart';
 import 'course_detail_view.dart';
 import '../../widgets/search_input.dart';
+import '../../widgets/app_button.dart';
 import '../../utils/app_colors.dart';
 
 class CoursesListScreen extends ConsumerWidget {
@@ -115,6 +116,37 @@ class CoursesListScreen extends ConsumerWidget {
                                 ?.copyWith(color: Colors.grey[600]),
                           ),
                         ),
+                        
+                        // Add Course Button
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
+                          child: SizedBox(
+                            width: 180,
+                            child: AppButton(
+                              label: '+ Add Course',
+                              backgroundColor: AppColors.primaryColor,
+                              height: 36,
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => Center(
+                                    child: ConstrainedBox(
+                                      constraints: const BoxConstraints(maxWidth: 650),
+                                      child: Dialog(
+                                        insetPadding: EdgeInsets.zero,
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(24.0),
+                                          child: CreateCourseForm(onCreated: refreshCourses),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+
                         const SizedBox(height: 12),
                       ];
 
@@ -370,32 +402,32 @@ class CoursesListScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (context) => Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 650),
-                child: Dialog(
-                  insetPadding: EdgeInsets.zero,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: CreateCourseForm(onCreated: refreshCourses),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Create Course'),
-        extendedTextStyle: const TextStyle(
-          fontWeight: FontWeight.w600,
-          color: Colors.white
-        ),
-        backgroundColor: AppColors.primaryColor,
-      ),
+      // floatingActionButton: FloatingActionButton.extended(
+      //   onPressed: () {
+      //     showDialog(
+      //       context: context,
+      //       builder: (context) => Center(
+      //         child: ConstrainedBox(
+      //           constraints: const BoxConstraints(maxWidth: 650),
+      //           child: Dialog(
+      //             insetPadding: EdgeInsets.zero,
+      //             child: Padding(
+      //               padding: const EdgeInsets.all(24.0),
+      //               child: CreateCourseForm(onCreated: refreshCourses),
+      //             ),
+      //           ),
+      //         ),
+      //       ),
+      //     );
+      //   },
+      //   icon: const Icon(Icons.add),
+      //   label: const Text('Create Course'),
+      //   extendedTextStyle: const TextStyle(
+      //     fontWeight: FontWeight.w600,
+      //     color: Colors.white
+      //   ),
+      //   backgroundColor: AppColors.primaryColor,
+      // ),
     );
   }
 }

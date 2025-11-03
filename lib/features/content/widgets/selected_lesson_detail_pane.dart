@@ -4,9 +4,12 @@ import 'package:milpress_dashboard/utils/app_colors.dart';
 
 import '../../lesson/lessons_repository.dart';
 import '../../lesson/lesson_quiz_repository.dart';
-import '../../lesson/widgets/lesson_quiz_form.dart';
 import 'media/video_player_widget.dart';
 import 'media/audio_player_widget.dart';
+import 'edit_lesson_dialog.dart';
+import 'delete_lesson_dialog.dart';
+import 'quiz_dialog.dart';
+import 'delete_quiz_dialog.dart';
 import '../state/lessons_list_controller.dart';
 import '../../../widgets/app_button.dart';
 
@@ -163,7 +166,17 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(6),
                             onTap: () {
-                              // Edit lesson functionality
+                              showEditLessonDialog(
+                                context: context,
+                                ref: ref,
+                                lesson: lesson,
+                                onUpdated: () {
+                                  // Refresh the lesson data
+                                  ref.invalidate(lessonByIdProvider(lesson.id));
+                                  // Also refresh the lessons list for the module
+                                  ref.invalidate(lessonsForModuleProvider(lesson.moduleId));
+                                },
+                              );
                             },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
@@ -204,7 +217,16 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(6),
                             onTap: () {
-                              // Delete lesson functionality
+                              showDeleteLessonDialog(
+                                context: context,
+                                ref: ref,
+                                lesson: lesson,
+                                onDeleted: () {
+                                  // Refresh the lessons list and clear selection
+                                  ref.invalidate(lessonsForModuleProvider(lesson.moduleId));
+                                  ref.read(selectedLessonIdProvider.notifier).state = null;
+                                },
+                              );
                             },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
@@ -312,30 +334,30 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                             ),
                             tooltip: 'Play',
                           ),
-                          IconButton(
-                            onPressed: () {
-                              // Edit video URL
-                            },
-                            icon: Image.asset(
-                              'assets/edit_pencil.png',
-                              width: 20,
-                              height: 20,
-                              color: Colors.grey.shade600,
-                            ),
-                            tooltip: 'Edit',
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              // Delete video
-                            },
-                            icon: Image.asset(
-                              'assets/delete.png',
-                              width: 20,
-                              height: 20,
-                              color: Colors.red.shade600,
-                            ),
-                            tooltip: 'Delete',
-                          ),
+                          // IconButton(
+                          //   onPressed: () {
+                          //     // Edit video URL
+                          //   },
+                          //   icon: Image.asset(
+                          //     'assets/edit_pencil.png',
+                          //     width: 20,
+                          //     height: 20,
+                          //     color: Colors.grey.shade600,
+                          //   ),
+                          //   tooltip: 'Edit',
+                          // ),
+                          // IconButton(
+                          //   onPressed: () {
+                          //     // Delete video
+                          //   },
+                          //   icon: Image.asset(
+                          //     'assets/delete.png',
+                          //     width: 20,
+                          //     height: 20,
+                          //     color: Colors.red.shade600,
+                          //   ),
+                          //   tooltip: 'Delete',
+                          // ),
                         ],
                       ),
                     ],
@@ -402,30 +424,30 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                             ),
                             tooltip: 'Play',
                           ),
-                          IconButton(
-                            onPressed: () {
-                              // Edit audio URL
-                            },
-                            icon: Image.asset(
-                              'assets/edit_pencil.png',
-                              width: 20,
-                              height: 20,
-                              color: Colors.grey.shade600,
-                            ),
-                            tooltip: 'Edit',
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              // Delete audio
-                            },
-                            icon: Image.asset(
-                              'assets/delete.png',
-                              width: 20,
-                              height: 20,
-                              color: Colors.red.shade600,
-                            ),
-                            tooltip: 'Delete',
-                          ),
+                          // IconButton(
+                          //   onPressed: () {
+                          //     // Edit audio URL
+                          //   },
+                          //   icon: Image.asset(
+                          //     'assets/edit_pencil.png',
+                          //     width: 20,
+                          //     height: 20,
+                          //     color: Colors.grey.shade600,
+                          //   ),
+                          //   tooltip: 'Edit',
+                          // ),
+                          // IconButton(
+                          //   onPressed: () {
+                          //     // Delete audio
+                          //   },
+                          //   icon: Image.asset(
+                          //     'assets/delete.png',
+                          //     width: 20,
+                          //     height: 20,
+                          //     color: Colors.red.shade600,
+                          //   ),
+                          //   tooltip: 'Delete',
+                          // ),
                         ],
                       ),
                     ],
@@ -463,33 +485,13 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                       label: 'Add Quiz',
                       backgroundColor: AppColors.primaryColor,
                       onPressed: () async {
-                        final created = await showModalBottomSheet<bool>(
+                        final created = await showQuizDialog(
                           context: context,
-                          isScrollControlled: true,
-                          builder: (ctx) => Padding(
-                            padding: EdgeInsets.only(
-                              bottom: MediaQuery.of(ctx).viewInsets.bottom,
-                            ),
-                            child: SizedBox(
-                              height: MediaQuery.of(ctx).size.height * 0.85,
-                              child: LessonQuizForm(lessonId: lesson.id),
-                            ),
-                          ),
+                          ref: ref,
+                          lessonId: lesson.id,
                         );
                         if (created == true) {
-                          // refresh quizzes list
-                          // ignore: use_build_context_synchronously
-                          final ref = ProviderScope.containerOf(
-                            context,
-                            listen: false,
-                          );
-                          ref
-                              .read(quizzesForLessonProvider(lesson.id).future)
-                              .then((_) {
-                                ref.invalidate(
-                                  quizzesForLessonProvider(lesson.id),
-                                );
-                              });
+                          // Refresh quizzes list
                           ref.invalidate(quizzesForLessonProvider(lesson.id));
                         }
                       },
@@ -595,14 +597,22 @@ class _LessonQuizzesList extends ConsumerWidget {
   }
 }
 
-class _QuizCard extends StatelessWidget {
+class _QuizCard extends StatefulWidget {
   const _QuizCard({required this.q});
   final dynamic q; // LessonQuiz
 
   @override
+  State<_QuizCard> createState() => _QuizCardState();
+}
+
+class _QuizCardState extends State<_QuizCard> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final optionsWidget = _buildOptions(q.options, theme);
+    final optionsWidget = _buildOptions(widget.q.options, theme);
+    
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       elevation: 0,
@@ -616,30 +626,54 @@ class _QuizCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title row with actions
+            // Title row with actions and dropdown
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(
-                    q.questionContent ?? 'Quiz Question',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                    ),
+                  child: Row(
+                    children: [
+                      // Dropdown button
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _isExpanded = !_isExpanded;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: Icon(
+                            _isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                            color: Colors.grey.shade600,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          widget.q.questionContent ?? 'Quiz Question',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                _QuizCardActions(q: q),
+                _QuizCardActions(q: widget.q),
               ],
             ),
             const SizedBox(height: 12),
             
-            // Tags row
+            // Tags row (always visible)
             Wrap(
               spacing: 8,
               runSpacing: 4,
               children: [
-                if (q.difficultyLevel != null)
+                if (widget.q.difficultyLevel != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -647,7 +681,7 @@ class _QuizCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      'Level ${q.difficultyLevel}',
+                      'Level ${widget.q.difficultyLevel}',
                       style: TextStyle(
                         color: Colors.orange.shade700,
                         fontSize: 12,
@@ -655,7 +689,7 @@ class _QuizCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                if (q.questionType != null)
+                if (widget.q.questionType != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -663,7 +697,7 @@ class _QuizCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      q.questionType!,
+                      widget.q.questionType!,
                       style: TextStyle(
                         color: Colors.blue.shade700,
                         fontSize: 12,
@@ -671,7 +705,7 @@ class _QuizCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                if (q.stage != null)
+                if (widget.q.stage != null)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -679,7 +713,7 @@ class _QuizCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      q.stage!,
+                      widget.q.stage!,
                       style: TextStyle(
                         color: Colors.grey.shade700,
                         fontSize: 12,
@@ -690,51 +724,64 @@ class _QuizCard extends StatelessWidget {
               ],
             ),
             
-            // Audio player section
-            if (q.soundFileUrl != null && q.soundFileUrl!.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade200, width: 1),
-                ),
-                child: LessonAudioPlayer(url: q.soundFileUrl!),
+            // Collapsible content with animation
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Audio player section
+                  if (widget.q.soundFileUrl != null && widget.q.soundFileUrl!.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade200, width: 1),
+                      ),
+                      child: LessonAudioPlayer(url: widget.q.soundFileUrl!),
+                    ),
+                  ],
+                  
+                  // Answer options section
+                  if (optionsWidget != null) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      'Answer Options',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    optionsWidget,
+                  ],
+                  
+                  // Correct answer section
+                  if (widget.q.correctAnswer != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Correct Answer: ${widget.q.correctAnswer!}',
+                        style: TextStyle(
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
-            
-            // Answer options section
-            if (optionsWidget != null) ...[
-              const SizedBox(height: 20),
-              Text(
-                'Answer Options',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              optionsWidget,
-            ],
-            
-            // Correct answer section
-            if (q.correctAnswer != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Correct Answer: ${q.correctAnswer!}',
-                  style: TextStyle(
-                    color: Colors.green.shade700,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
+              crossFadeState: _isExpanded 
+                  ? CrossFadeState.showSecond 
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+            ),
           ],
         ),
       ),
@@ -836,18 +883,11 @@ class _QuizCardActions extends ConsumerWidget {
             color: Colors.grey.shade600,
           ),
           onPressed: () async {
-            final updated = await showModalBottomSheet<bool>(
+            final updated = await showQuizDialog(
               context: context,
-              isScrollControlled: true,
-              builder: (ctx) => Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(ctx).viewInsets.bottom,
-                ),
-                child: SizedBox(
-                  height: MediaQuery.of(ctx).size.height * 0.85,
-                  child: LessonQuizForm(lessonId: q.lessonId, initial: q),
-                ),
-              ),
+              ref: ref,
+              lessonId: q.lessonId,
+              initialQuiz: q,
             );
             if (updated == true) {
               ref.invalidate(quizzesForLessonProvider(q.lessonId));
@@ -863,29 +903,14 @@ class _QuizCardActions extends ConsumerWidget {
             color: Colors.red.shade600,
           ),
           onPressed: () async {
-            final confirm = await showDialog<bool>(
+            await showDeleteQuizDialog(
               context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('Delete quiz?'),
-                content: const Text('This action cannot be undone.'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: const Text('Delete'),
-                  ),
-                ],
-              ),
-            );
-            if (confirm == true) {
-              try {
-                await ref.read(deleteLessonQuizProvider.notifier).delete(q.id);
+              ref: ref,
+              quiz: q,
+              onDeleted: () {
                 ref.invalidate(quizzesForLessonProvider(q.lessonId));
-              } catch (_) {}
-            }
+              },
+            );
           },
         ),
       ],

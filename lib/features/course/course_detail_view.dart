@@ -236,40 +236,24 @@ class CourseDetailView extends ConsumerWidget {
                   onPressed: modulesLoading
                       ? null
                       : () {
-                          final parentContext = context;
                           showDialog(
-                            context: parentContext,
-                            builder: (_) => Center(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 650,
-                                ),
-                                child: Dialog(
-                                  insetPadding: EdgeInsets.zero,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(24.0),
-                                    child: CreateModuleForm(
-                                      courseId: course.id,
-                                      initialPosition: nextModulePosition,
-                                      onCreated: () {
-                                        ref.invalidate(
-                                          modulesForCourseProvider(course.id),
-                                        );
-                                        onRefresh();
-                                        if (parentContext.mounted) {
-                                          ScaffoldMessenger.of(
-                                            parentContext,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('Module created'),
-                                            ),
-                                          );
-                                        }
-                                      },
+                            context: context,
+                            builder: (ctx) => CreateModuleForm(
+                              courseId: course.id,
+                              initialPosition: nextModulePosition,
+                              onCreated: () {
+                                ref.invalidate(
+                                  modulesForCourseProvider(course.id),
+                                );
+                                onRefresh();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Module created'),
                                     ),
-                                  ),
-                                ),
-                              ),
+                                  );
+                                }
+                              },
                             ),
                           );
                         },

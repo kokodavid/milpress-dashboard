@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:milpress_dashboard/utils/app_colors.dart';
 
 import '../modules/modules_repository.dart';
+import '../modules/edit_module_form.dart';
+import '../modules/delete_module_dialog.dart';
 
 import '../../features/lesson/lessons_repository.dart';
 
@@ -171,7 +173,15 @@ class _ModuleWithLessonsDropdownState
                 children: [
                   GestureDetector(
                     onTap: () {
-                      // TODO: Add edit functionality
+                      showEditModuleDialog(
+                        context: context,
+                        ref: ref,
+                        module: module,
+                        onUpdated: () {
+                          // Refresh the modules list
+                          ref.invalidate(modulesForCourseProvider);
+                        },
+                      );
                     },
                     child: Container(
                       width: 32,
@@ -203,7 +213,15 @@ class _ModuleWithLessonsDropdownState
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () {
-                      // TODO: Add delete functionality
+                      showDeleteModuleDialog(
+                        context: context,
+                        ref: ref,
+                        module: module,
+                        onDeleted: () {
+                          // Refresh the modules list
+                          ref.invalidate(modulesForCourseProvider);
+                        },
+                      );
                     },
                     child: Container(
                       width: 32,

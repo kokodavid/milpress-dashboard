@@ -19,12 +19,19 @@ class _CreateCourseFormState extends ConsumerState<CreateCourseForm> {
   final _formKey = GlobalKey<FormState>();
   String title = '';
   String description = '';
-  String type = '';
+  String? type;
   int? level;
   int? duration;
   bool locked = false;
   bool isLoading = false;
   String? errorMsg;
+
+  // Available course types
+  static const List<String> courseTypes = [
+    'Writing',
+    'Letter', 
+    'Word',
+  ];
 
   Future<void> _submit() async {
     setState(() {
@@ -41,7 +48,7 @@ class _CreateCourseFormState extends ConsumerState<CreateCourseForm> {
           CourseCreate(
             title: title,
             description: description,
-            type: type,
+            type: type ?? '',
             level: level,
             durationInMinutes: duration,
             locked: locked,
@@ -140,11 +147,59 @@ class _CreateCourseFormState extends ConsumerState<CreateCourseForm> {
                 Row(
                   children: [
                     Expanded(
-                      child: AppTextFormField(
-                        label: 'Type',
-                        hintText: 'Course type i.e word',
-                        validator: (v) => v == null || v.trim().isEmpty ? 'Type is required' : null,
-                        onSaved: (v) => type = v?.trim() ?? '',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Type*',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: type,
+                            decoration: InputDecoration(
+                              hintText: 'Select course type',
+                              hintStyle: TextStyle(color: Colors.grey.shade400),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: Color(0xFFE85D04)),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            items: courseTypes.map((String courseType) {
+                              return DropdownMenuItem<String>(
+                                value: courseType,
+                                child: Text(courseType),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                type = newValue;
+                              });
+                            },
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Type is required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 16),

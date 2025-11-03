@@ -25,12 +25,19 @@ class _EditCourseFormState extends ConsumerState<EditCourseForm> {
 
   late String title = widget.course.title;
   late String description = widget.course.description ?? '';
-  late String type = widget.course.type ?? '';
+  late String? type = widget.course.type;
   late int? level = widget.course.level;
   late int? duration = widget.course.durationInMinutes;
   late bool locked = widget.course.locked;
   bool isLoading = false;
   String? errorMsg;
+
+  // Available course types
+  static const List<String> courseTypes = [
+    'Writing',
+    'Letter', 
+    'Word',
+  ];
 
   Future<void> _submit() async {
     setState(() {
@@ -48,7 +55,7 @@ class _EditCourseFormState extends ConsumerState<EditCourseForm> {
           CourseUpdate(
             title: title,
             description: description,
-            type: type,
+            type: type ?? '',
             level: level,
             durationInMinutes: duration,
             locked: locked,
@@ -151,13 +158,54 @@ class _EditCourseFormState extends ConsumerState<EditCourseForm> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        AppTextFormField(
-                          label: 'Type',
-                          initialValue: type,
-                          validator: (v) => v == null || v.trim().isEmpty
-                              ? 'Type is required'
-                              : null,
-                          onSaved: (v) => type = v?.trim() ?? '',
+                        const Text(
+                          'Type*',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: type,
+                          decoration: InputDecoration(
+                            hintText: 'Select course type',
+                            hintStyle: TextStyle(color: Colors.grey.shade400),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(color: Color(0xFFE85D04)),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                          items: courseTypes.map((String courseType) {
+                            return DropdownMenuItem<String>(
+                              value: courseType,
+                              child: Text(courseType),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              type = newValue;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Type is required';
+                            }
+                            return null;
+                          },
                         ),
                       ],
                     ),

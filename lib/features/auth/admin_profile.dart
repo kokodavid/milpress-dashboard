@@ -32,6 +32,31 @@ class AdminProfile {
   }
 }
 
+
+final adminProfilesListProvider = FutureProvider.family<List<AdminProfile>, String?>((ref, search) async {
+  final link = ref.keepAlive();
+  Future.delayed(const Duration(minutes: 5), link.close);
+  
+  final client = Supabase.instance.client;
+  var query = client
+      .from('admin_profiles')
+      .select('id, name, email, role, is_active, last_login, created_at');
+
+  final term = search?.trim();
+  if (term != null && term.isNotEmpty) {
+    query = query.or('name.ilike.%$term%,email.ilike.%$term%,role.ilike.%$term%');
+  }
+
+  final List data = await query.order('created_at', ascending: false);
+  return data.map((e) => AdminProfile.fromMap(Map<String, dynamic>.from(e as Map))).toList();
+});
+
+final adminProfilesCountProvider = FutureProvider<int>((ref) async {
+  final client = Supabase.instance.client;
+  final List data = await client.from('admin_profiles').select('id');
+  return data.length;
+});
+
 final currentUserProvider = StreamProvider<User?>((ref) {
   final auth = Supabase.instance.client.auth;
   return auth.onAuthStateChange.map((e) => e.session?.user);

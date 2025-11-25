@@ -158,8 +158,15 @@ class CourseDetailView extends ConsumerWidget {
                         );
                         if (confirm == true) {
                           try {
-                            final repo = ref.read(courseRepositoryProvider);
-                            await repo.deleteCourse(course.id);
+                            // Use notifier so activity logging runs on delete
+                            await ref.read(deleteCourseProvider.notifier).delete(
+                              course.id,
+                              details: {
+                                'title': course.title,
+                                if (course.level != null) 'level': course.level,
+                                if (course.type != null) 'type': course.type,
+                              },
+                            );
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Course deleted')),

@@ -69,8 +69,8 @@ class _CreateModuleFormState extends ConsumerState<CreateModuleForm> {
     });
 
     try {
-      final repo = ref.read(modulesRepositoryProvider);
-      await repo.createModule(
+      // Use notifier so activity logging runs
+      await ref.read(createModuleProvider.notifier).create(
         ModuleCreate(
           courseId: widget.courseId,
           position: position,

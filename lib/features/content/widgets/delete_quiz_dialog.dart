@@ -262,7 +262,19 @@ class _DeleteQuizDialogState extends State<_DeleteQuizDialog> {
     });
 
     try {
-      await widget.ref.read(deleteLessonQuizProvider.notifier).delete(widget.quiz.id);
+      await widget.ref.read(deleteLessonQuizProvider.notifier).delete(
+        widget.quiz.id,
+        details: {
+          'lesson_id': widget.quiz.lessonId,
+          if (widget.quiz.questionType != null) 'question_type': widget.quiz.questionType,
+          if (widget.quiz.stage != null) 'stage': widget.quiz.stage,
+          if (widget.quiz.difficultyLevel != null) 'difficulty_level': widget.quiz.difficultyLevel,
+          if (widget.quiz.questionContent != null)
+            'question_excerpt': widget.quiz.questionContent!.length > 80
+                ? widget.quiz.questionContent!.substring(0, 80)
+                : widget.quiz.questionContent,
+        },
+      );
       
       if (mounted) {
         Navigator.of(context).pop(true);

@@ -6,7 +6,7 @@ import 'package:milpress_dashboard/features/course/course_repository.dart';
 import 'package:milpress_dashboard/features/lesson/lessons_repository.dart';
 import 'package:milpress_dashboard/features/auth/profiles_repository.dart';
 import 'package:milpress_dashboard/features/modules/modules_repository.dart';
-// Sidebar is now handled globally by AppShell
+
 
 final selectedIndexProvider = StateProvider<int>((ref) => 0);
 
@@ -503,6 +503,7 @@ class _LatestUsersCard extends ConsumerWidget {
   }
 }
 
+// Admin activity card moved to Settings page
 
 
 class SettingsPage extends StatelessWidget {

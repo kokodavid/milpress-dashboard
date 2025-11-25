@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:milpress_dashboard/features/auth/admin_activity_repository.dart';
+import 'package:milpress_dashboard/features/auth/activity_actions.dart';
 
 import 'modules_model.dart';
 
@@ -49,12 +51,28 @@ final moduleByIdProvider = FutureProvider.family<Module?, String>((ref, id) asyn
 // Mutation controllers
 class CreateModuleController extends StateNotifier<AsyncValue<Module?>> {
   final ModulesRepository _repo;
-  CreateModuleController(this._repo) : super(const AsyncData<Module?>(null));
+  final Ref _ref;
+  CreateModuleController(this._repo, this._ref)
+      : super(const AsyncData<Module?>(null));
 
   Future<Module?> create(ModuleCreate data) async {
     state = const AsyncLoading();
     try {
       final created = await _repo.createModule(data);
+      // Log module created
+      await _ref.read(adminActivityRepositoryProvider).log(
+        action: ActivityActions.moduleCreated,
+        targetType: 'module',
+        targetId: created.id,
+        details: {
+          'course_id': created.courseId,
+          'position': created.position,
+          'duration_minutes': created.durationMinutes,
+          'locked': created.locked,
+          if (created.lockMessage != null) 'lock_message': created.lockMessage,
+          if (created.description != null) 'description': created.description,
+        },
+      );
       state = AsyncData(created);
       return created;
     } catch (e, st) {
@@ -66,17 +84,40 @@ class CreateModuleController extends StateNotifier<AsyncValue<Module?>> {
 
 final createModuleProvider = StateNotifierProvider<CreateModuleController, AsyncValue<Module?>>((ref) {
   final repo = ref.watch(modulesRepositoryProvider);
-  return CreateModuleController(repo);
+  return CreateModuleController(repo, ref);
 });
 
 class UpdateModuleController extends StateNotifier<AsyncValue<void>> {
   final ModulesRepository _repo;
-  UpdateModuleController(this._repo) : super(const AsyncData(null));
+  final Ref _ref;
+  UpdateModuleController(this._repo, this._ref) : super(const AsyncData(null));
 
   Future<void> update(String id, ModuleUpdate data) async {
     state = const AsyncLoading();
     try {
+      // Fetch old values before updating
+      final oldModule = await _repo.fetchModuleById(id);
+      final changes = <String, dynamic>{};
+      
+      // Track what changed
+      if (data.description != null && data.description != oldModule?.description) {
+        changes['description_old'] = oldModule?.description;
+        changes['description_new'] = data.description;
+      }
+      if (data.position != null && data.position != oldModule?.position) {
+        changes['position_old'] = oldModule?.position;
+        changes['position_new'] = data.position;
+      }
+      
       await _repo.updateModule(id, data);
+      
+      // Log module updated with old and new values
+      await _ref.read(adminActivityRepositoryProvider).log(
+        action: ActivityActions.moduleUpdated,
+        targetType: 'module',
+        targetId: id,
+        details: changes,
+      );
       state = const AsyncData(null);
     } catch (e, st) {
       state = AsyncError(e, st);
@@ -87,17 +128,25 @@ class UpdateModuleController extends StateNotifier<AsyncValue<void>> {
 
 final updateModuleProvider = StateNotifierProvider<UpdateModuleController, AsyncValue<void>>((ref) {
   final repo = ref.watch(modulesRepositoryProvider);
-  return UpdateModuleController(repo);
+  return UpdateModuleController(repo, ref);
 });
 
 class DeleteModuleController extends StateNotifier<AsyncValue<void>> {
   final ModulesRepository _repo;
-  DeleteModuleController(this._repo) : super(const AsyncData(null));
+  final Ref _ref;
+  DeleteModuleController(this._repo, this._ref) : super(const AsyncData(null));
 
-  Future<void> delete(String id) async {
+  Future<void> delete(String id, {Map<String, dynamic>? details}) async {
     state = const AsyncLoading();
     try {
       await _repo.deleteModule(id);
+      // Log module deleted
+      await _ref.read(adminActivityRepositoryProvider).log(
+        action: ActivityActions.moduleDeleted,
+        targetType: 'module',
+        targetId: id,
+        details: details,
+      );
       state = const AsyncData(null);
     } catch (e, st) {
       state = AsyncError(e, st);
@@ -108,7 +157,7 @@ class DeleteModuleController extends StateNotifier<AsyncValue<void>> {
 
 final deleteModuleProvider = StateNotifierProvider<DeleteModuleController, AsyncValue<void>>((ref) {
   final repo = ref.watch(modulesRepositoryProvider);
-  return DeleteModuleController(repo);
+  return DeleteModuleController(repo, ref);
 });
 
 // Repository

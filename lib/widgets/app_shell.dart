@@ -20,6 +20,8 @@ class AppShell extends StatelessWidget {
           return 'Courses';
         case '/lessons':
           return 'Lessons';
+        case '/users':
+          return 'Users';
         case '/settings':
           return 'Settings';
         default:

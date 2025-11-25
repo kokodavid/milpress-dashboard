@@ -43,8 +43,8 @@ class _CreateCourseFormState extends ConsumerState<CreateCourseForm> {
         isLoading = true;
       });
       try {
-        final repo = ref.read(courseRepositoryProvider);
-        await repo.createCourse(
+        // Use controller so activity logging runs
+        await ref.read(createCourseProvider.notifier).create(
           CourseCreate(
             title: title,
             description: description,

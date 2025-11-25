@@ -55,8 +55,6 @@ class AppSidebar extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SidebarSectionLabel('Overview'),
-                  const SizedBox(height: 8),
                   _SidebarNavTile(
                     iconAsset: 'assets/house.png',
                     label: 'Dashboard',
@@ -64,6 +62,9 @@ class AppSidebar extends ConsumerWidget {
                     onTap: () => context.go('/dashboard'),
                   ),
                   const SizedBox(height: 4),
+                  _SidebarSectionLabel('Content Management'),
+                  const SizedBox(height: 8),
+
                   _SidebarNavTile(
                     iconAsset: 'assets/book.png',
                     label: 'Courses',
@@ -77,6 +78,15 @@ class AppSidebar extends ConsumerWidget {
                     selected: selectedRoute == '/lessons',
                     onTap: () => context.go('/lessons'),
                   ),
+                  const SizedBox(height: 20),
+                  _SidebarSectionLabel('Users Management'),
+                  const SizedBox(height: 8),
+                  _SidebarNavTile(
+                    icon: Icons.people_outline,
+                    label: 'Users',
+                    selected: selectedRoute == '/users',
+                    onTap: () => context.go('/users'),
+                  ),
                 ],
               ),
             ),
@@ -87,8 +97,8 @@ class AppSidebar extends ConsumerWidget {
             child: Column(
               children: [
                 _SidebarNavTile(
-                  icon: Icons.settings_outlined,
-                  label: 'Settings',
+                  icon: Icons.people_alt_outlined,
+                  label: 'Admin',
                   selected: selectedRoute == '/settings',
                   onTap: () => context.go('/settings'),
                 ),
@@ -143,12 +153,15 @@ class _SidebarNavTile extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.color,
-  }) : assert(icon != null || iconAsset != null, 'Either icon or iconAsset must be provided');
-  
+  }) : assert(
+         icon != null || iconAsset != null,
+         'Either icon or iconAsset must be provided',
+       );
+
   @override
   Widget build(BuildContext context) {
     final isSelected = selected;
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
@@ -180,11 +193,7 @@ class _SidebarNavTile extends StatelessWidget {
                             fit: BoxFit.contain,
                           ),
                         )
-                      : Icon(
-                          icon!,
-                          color: Colors.white,
-                          size: 20,
-                        ),
+                      : Icon(icon!, color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -192,16 +201,12 @@ class _SidebarNavTile extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 14,
-                    fontWeight:FontWeight.w500,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 if (isSelected) const Spacer(),
                 if (isSelected)
-                  Icon(
-                    Icons.chevron_right,
-                    color: Colors.white,
-                    size: 16,
-                  ),
+                  Icon(Icons.chevron_right, color: Colors.white, size: 16),
               ],
             ),
           ),

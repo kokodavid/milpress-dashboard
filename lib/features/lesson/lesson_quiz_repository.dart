@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:milpress_dashboard/features/auth/admin_activity_repository.dart';
+import 'package:milpress_dashboard/features/auth/activity_actions.dart';
 
 import 'lesson_quiz_model.dart';
 
@@ -45,12 +47,25 @@ final quizzesForLessonProvider = FutureProvider.family<List<LessonQuiz>, String>
 // Mutation controllers
 class CreateLessonQuizController extends StateNotifier<AsyncValue<LessonQuiz?>> {
   final LessonQuizRepository _repo;
-  CreateLessonQuizController(this._repo) : super(const AsyncData<LessonQuiz?>(null));
+  final Ref _ref;
+  CreateLessonQuizController(this._repo, this._ref)
+      : super(const AsyncData<LessonQuiz?>(null));
 
   Future<LessonQuiz?> create(LessonQuizCreate data) async {
     state = const AsyncLoading();
     try {
       final created = await _repo.createQuiz(data);
+      await _ref.read(adminActivityRepositoryProvider).log(
+        action: ActivityActions.lessonQuizCreated,
+        targetType: 'lesson_quiz',
+        targetId: created.id,
+        details: {
+          'lesson_id': created.lessonId,
+          if (created.questionType != null) 'question_type': created.questionType,
+          if (created.stage != null) 'stage': created.stage,
+          if (created.difficultyLevel != null) 'difficulty_level': created.difficultyLevel,
+        },
+      );
       state = AsyncData(created);
       return created;
     } catch (e, st) {
@@ -62,17 +77,24 @@ class CreateLessonQuizController extends StateNotifier<AsyncValue<LessonQuiz?>> 
 
 final createLessonQuizProvider = StateNotifierProvider<CreateLessonQuizController, AsyncValue<LessonQuiz?>>((ref) {
   final repo = ref.watch(lessonQuizRepositoryProvider);
-  return CreateLessonQuizController(repo);
+  return CreateLessonQuizController(repo, ref);
 });
 
 class UpdateLessonQuizController extends StateNotifier<AsyncValue<void>> {
   final LessonQuizRepository _repo;
-  UpdateLessonQuizController(this._repo) : super(const AsyncData(null));
+  final Ref _ref;
+  UpdateLessonQuizController(this._repo, this._ref) : super(const AsyncData(null));
 
   Future<void> update(String id, LessonQuizUpdate data) async {
     state = const AsyncLoading();
     try {
       await _repo.updateQuiz(id, data);
+      await _ref.read(adminActivityRepositoryProvider).log(
+        action: ActivityActions.lessonQuizUpdated,
+        targetType: 'lesson_quiz',
+        targetId: id,
+        details: data.toUpdateMap(),
+      );
       state = const AsyncData(null);
     } catch (e, st) {
       state = AsyncError(e, st);
@@ -83,17 +105,24 @@ class UpdateLessonQuizController extends StateNotifier<AsyncValue<void>> {
 
 final updateLessonQuizProvider = StateNotifierProvider<UpdateLessonQuizController, AsyncValue<void>>((ref) {
   final repo = ref.watch(lessonQuizRepositoryProvider);
-  return UpdateLessonQuizController(repo);
+  return UpdateLessonQuizController(repo, ref);
 });
 
 class DeleteLessonQuizController extends StateNotifier<AsyncValue<void>> {
   final LessonQuizRepository _repo;
-  DeleteLessonQuizController(this._repo) : super(const AsyncData(null));
+  final Ref _ref;
+  DeleteLessonQuizController(this._repo, this._ref) : super(const AsyncData(null));
 
-  Future<void> delete(String id) async {
+  Future<void> delete(String id, {Map<String, dynamic>? details}) async {
     state = const AsyncLoading();
     try {
       await _repo.deleteQuiz(id);
+      await _ref.read(adminActivityRepositoryProvider).log(
+        action: ActivityActions.lessonQuizDeleted,
+        targetType: 'lesson_quiz',
+        targetId: id,
+        details: details,
+      );
       state = const AsyncData(null);
     } catch (e, st) {
       state = AsyncError(e, st);
@@ -104,5 +133,5 @@ class DeleteLessonQuizController extends StateNotifier<AsyncValue<void>> {
 
 final deleteLessonQuizProvider = StateNotifierProvider<DeleteLessonQuizController, AsyncValue<void>>((ref) {
   final repo = ref.watch(lessonQuizRepositoryProvider);
-  return DeleteLessonQuizController(repo);
+  return DeleteLessonQuizController(repo, ref);
 });

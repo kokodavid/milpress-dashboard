@@ -49,8 +49,8 @@ class _EditCourseFormState extends ConsumerState<EditCourseForm> {
         isLoading = true;
       });
       try {
-        final repo = ref.read(courseRepositoryProvider);
-        await repo.updateCourse(
+        // Use controller so activity logging runs
+        await ref.read(updateCourseProvider.notifier).update(
           widget.course.id,
           CourseUpdate(
             title: title,

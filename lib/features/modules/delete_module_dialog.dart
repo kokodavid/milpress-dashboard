@@ -232,7 +232,14 @@ class _DeleteModuleDialogState extends State<_DeleteModuleDialog> {
     });
 
     try {
-      await widget.ref.read(deleteModuleProvider.notifier).delete(widget.module.id);
+      await widget.ref.read(deleteModuleProvider.notifier).delete(
+        widget.module.id,
+        details: {
+          'description': widget.module.description,
+          'position': widget.module.position,
+          'course_id': widget.module.courseId,
+        },
+      );
       
       if (mounted) {
         Navigator.of(context).pop();

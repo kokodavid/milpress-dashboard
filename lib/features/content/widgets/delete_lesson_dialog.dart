@@ -249,7 +249,15 @@ class _DeleteLessonDialogState extends State<_DeleteLessonDialog> {
     });
 
     try {
-      await widget.ref.read(deleteLessonProvider.notifier).delete(widget.lesson.id);
+      await widget.ref.read(deleteLessonProvider.notifier).delete(
+        widget.lesson.id,
+        details: {
+          'title': widget.lesson.title,
+          'position': widget.lesson.position,
+          if (widget.lesson.durationMinutes != null)
+            'duration_minutes': widget.lesson.durationMinutes,
+        },
+      );
       
       if (mounted) {
         Navigator.of(context).pop();

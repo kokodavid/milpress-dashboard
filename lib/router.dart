@@ -1,6 +1,8 @@
 import 'package:go_router/go_router.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/dashboard_screen.dart';
+import 'features/settings/settings_screen.dart';
+import 'features/user_management_screen.dart';
 import 'features/course/courses_list_screen.dart';
 import 'features/content/modules_list_screen.dart';
 import 'features/content/lessons_list_screen.dart';
@@ -32,6 +34,14 @@ final GoRouter appRouter = GoRouter(
 				GoRoute(
 					path: '/lessons',
 					builder: (context, state) => const LessonsListScreen(),
+				),
+				GoRoute(
+					path: '/users',
+					builder: (context, state) => const UserManagementScreen(),
+				),
+				GoRoute(
+					path: '/settings',
+					builder: (context, state) => const SettingsScreen(),
 				),
 				GoRoute(
 					path: '/quizzes',

@@ -4,14 +4,23 @@ import 'app_sidebar.dart';
 import 'search_input.dart';
 import 'current_user_chip.dart';
 
-class AppShell extends StatelessWidget {
+
+class AppShell extends StatefulWidget {
   final Widget child;
   const AppShell({super.key, required this.child});
 
   @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  bool isSidebarCollapsed = false;
+
+
+  @override
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
-    
+
     String getPageTitle(String route) {
       switch (route) {
         case '/dashboard':
@@ -28,12 +37,20 @@ class AppShell extends StatelessWidget {
           return 'Dashboard';
       }
     }
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFFFFF),
       body: Row(
         children: [
-          AppSidebar(selectedRoute: location),
+          AppSidebar(
+            selectedRoute: location,
+            isCollapsed: isSidebarCollapsed,
+            onToggle: () {
+              setState(() {
+                isSidebarCollapsed = !isSidebarCollapsed;
+              });
+            },
+          ),
           Expanded(
             child: Column(
               children: [
@@ -102,7 +119,7 @@ class AppShell extends StatelessWidget {
                   ),
                 ),
                 // Content
-                Expanded(child: child),
+                Expanded(child: widget.child),
               ],
             ),
           ),

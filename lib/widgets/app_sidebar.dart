@@ -3,14 +3,23 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:milpress_dashboard/utils/app_colors.dart';
 
+
 class AppSidebar extends ConsumerWidget {
   final String selectedRoute;
-  const AppSidebar({super.key, required this.selectedRoute});
+  final bool isCollapsed;
+  final VoidCallback onToggle;
+  const AppSidebar({
+    super.key,
+    required this.selectedRoute,
+    required this.isCollapsed,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      width: 240,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: isCollapsed ? 72 : 240,
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.copBlue,
@@ -26,32 +35,67 @@ class AppSidebar extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Logo section
+          // Top section: Logo and toggle button
           Padding(
-            padding: const EdgeInsets.fromLTRB(24.0, 32.0, 24.0, 40.0),
+            padding: EdgeInsets.fromLTRB(
+              isCollapsed ? 12.0 : 24.0,
+              32.0,
+              isCollapsed ? 12.0 : 24.0,
+              isCollapsed ? 16.0 : 40.0,
+            ),
             child: Row(
               children: [
-                SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: Image.asset('assets/logo.png', fit: BoxFit.contain),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Milpress',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primaryColor,
-                    fontSize: 18,
+                if (isCollapsed)
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: Image.asset(
+                            'assets/logo.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        IconButton(
+                          icon: Icon(Icons.chevron_right, color: Colors.white),
+                          onPressed: onToggle,
+                          tooltip: 'Expand sidebar',
+                        ),
+                      ],
+                    ),
+                  )
+                else ...[
+                  SizedBox(
+                    width: 32,
+                    height: 32,
+                    child: Image.asset('assets/logo.png', fit: BoxFit.contain),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Milpress',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryColor,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: Icon(Icons.chevron_left, color: Colors.white),
+                    onPressed: onToggle,
+                    tooltip: 'Collapse sidebar',
+                  ),
+                ],
               ],
             ),
           ),
           // Navigation options
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 0 : 16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -60,32 +104,39 @@ class AppSidebar extends ConsumerWidget {
                     label: 'Dashboard',
                     selected: selectedRoute == '/dashboard',
                     onTap: () => context.go('/dashboard'),
+                    isCollapsed: isCollapsed,
                   ),
-                  const SizedBox(height: 4),
-                  _SidebarSectionLabel('Content Management'),
-                  const SizedBox(height: 8),
-
+                  if (!isCollapsed) ...[
+                    const SizedBox(height: 4),
+                    _SidebarSectionLabel('Content Management'),
+                    const SizedBox(height: 8),
+                  ],
                   _SidebarNavTile(
                     iconAsset: 'assets/book.png',
                     label: 'Courses',
                     selected: selectedRoute == '/courses',
                     onTap: () => context.go('/courses'),
+                    isCollapsed: isCollapsed,
                   ),
-                  const SizedBox(height: 4),
+                  if (!isCollapsed) const SizedBox(height: 4),
                   _SidebarNavTile(
                     iconAsset: 'assets/book_open.png',
                     label: 'Lessons',
                     selected: selectedRoute == '/lessons',
                     onTap: () => context.go('/lessons'),
+                    isCollapsed: isCollapsed,
                   ),
-                  const SizedBox(height: 20),
-                  _SidebarSectionLabel('Users Management'),
-                  const SizedBox(height: 8),
+                  if (!isCollapsed) ...[
+                    const SizedBox(height: 20),
+                    _SidebarSectionLabel('Users Management'),
+                    const SizedBox(height: 8),
+                  ],
                   _SidebarNavTile(
                     icon: Icons.people_outline,
                     label: 'Users',
                     selected: selectedRoute == '/users',
                     onTap: () => context.go('/users'),
+                    isCollapsed: isCollapsed,
                   ),
                 ],
               ),
@@ -93,7 +144,12 @@ class AppSidebar extends ConsumerWidget {
           ),
           // Bottom section
           Padding(
-            padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 24.0),
+            padding: EdgeInsets.fromLTRB(
+              isCollapsed ? 0 : 16.0,
+              8.0,
+              isCollapsed ? 0 : 16.0,
+              24.0,
+            ),
             child: Column(
               children: [
                 _SidebarNavTile(
@@ -101,14 +157,16 @@ class AppSidebar extends ConsumerWidget {
                   label: 'Admin',
                   selected: selectedRoute == '/settings',
                   onTap: () => context.go('/settings'),
+                  isCollapsed: isCollapsed,
                 ),
-                const SizedBox(height: 4),
+                if (!isCollapsed) const SizedBox(height: 4),
                 _SidebarNavTile(
                   icon: Icons.logout_outlined,
                   label: 'Logout',
                   selected: false,
                   onTap: () {},
-                  color: Colors.red.shade400,
+                  color: Colors.red,
+                  isCollapsed: isCollapsed,
                 ),
               ],
             ),
@@ -146,6 +204,7 @@ class _SidebarNavTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final Color? color;
+  final bool isCollapsed;
   const _SidebarNavTile({
     this.icon,
     this.iconAsset,
@@ -153,6 +212,7 @@ class _SidebarNavTile extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.color,
+    this.isCollapsed = false,
   }) : assert(
          icon != null || iconAsset != null,
          'Either icon or iconAsset must be provided',
@@ -174,8 +234,14 @@ class _SidebarNavTile extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(8),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: isCollapsed ? 0 : 12,
+              vertical: 12,
+            ),
             child: Row(
+              mainAxisAlignment: isCollapsed
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.start,
               children: [
                 SizedBox(
                   width: 20,
@@ -195,18 +261,20 @@ class _SidebarNavTile extends StatelessWidget {
                         )
                       : Icon(icon!, color: Colors.white, size: 20),
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                if (!isCollapsed) ...[
+                  const SizedBox(width: 12),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                if (isSelected) const Spacer(),
-                if (isSelected)
-                  Icon(Icons.chevron_right, color: Colors.white, size: 16),
+                  if (isSelected) const Spacer(),
+                  if (isSelected)
+                    Icon(Icons.chevron_right, color: Colors.white, size: 16),
+                ],
               ],
             ),
           ),

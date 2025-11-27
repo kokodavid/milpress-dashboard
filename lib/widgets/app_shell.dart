@@ -32,7 +32,7 @@ class _AppShellState extends State<AppShell> {
         case '/users':
           return 'Users';
         case '/settings':
-          return 'Settings';
+          return 'Access and Roles';
         default:
           return 'Dashboard';
       }

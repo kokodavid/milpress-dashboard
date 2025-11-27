@@ -43,54 +43,45 @@ class AppSidebar extends ConsumerWidget {
               isCollapsed ? 12.0 : 24.0,
               isCollapsed ? 16.0 : 40.0,
             ),
-            child: Row(
-              children: [
-                if (isCollapsed)
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 32,
-                          height: 32,
-                          child: Image.asset(
-                            'assets/logo.png',
-                            fit: BoxFit.contain,
-                          ),
+            child: isCollapsed
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 32,
+                        height: 32,
+                        child: Image.asset(
+                          'assets/logo.png',
+                          fit: BoxFit.contain,
                         ),
-                        const SizedBox(height: 8),
-                        IconButton(
-                          icon: Icon(Icons.chevron_right, color: Colors.white),
-                          onPressed: onToggle,
-                          tooltip: 'Expand sidebar',
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   )
-                else ...[
-                  SizedBox(
-                    width: 32,
-                    height: 32,
-                    child: Image.asset('assets/logo.png', fit: BoxFit.contain),
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 32,
+                        height: 32,
+                        child: Image.asset('assets/logo.png', fit: BoxFit.contain),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Milpress',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primaryColor,
+                                fontSize: 18,
+                              ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Milpress',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primaryColor,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: Icon(Icons.chevron_left, color: Colors.white),
-                    onPressed: onToggle,
-                    tooltip: 'Collapse sidebar',
-                  ),
-                ],
-              ],
-            ),
           ),
           // Navigation options
           Expanded(
@@ -152,6 +143,17 @@ class AppSidebar extends ConsumerWidget {
             ),
             child: Column(
               children: [
+                // Collapse/Expand action as a tile (like the reference UI)
+                _SidebarNavTile(
+                  icon: isCollapsed
+                      ? Icons.keyboard_double_arrow_right
+                      : Icons.keyboard_double_arrow_left,
+                  label: isCollapsed ? 'Expand' : 'Collapse',
+                  selected: false,
+                  onTap: onToggle,
+                  isCollapsed: isCollapsed,
+                ),
+                if (!isCollapsed) const SizedBox(height: 8),
                 _SidebarNavTile(
                   icon: Icons.people_alt_outlined,
                   label: 'Admin',
@@ -263,17 +265,24 @@ class _SidebarNavTile extends StatelessWidget {
                 ),
                 if (!isCollapsed) ...[
                   const SizedBox(width: 12),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
                     ),
                   ),
-                  if (isSelected) const Spacer(),
                   if (isSelected)
-                    Icon(Icons.chevron_right, color: Colors.white, size: 16),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Icon(Icons.chevron_right, color: Colors.white, size: 16),
+                    ),
                 ],
               ],
             ),

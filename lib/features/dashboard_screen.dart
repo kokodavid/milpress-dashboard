@@ -39,9 +39,7 @@ class DashboardOverview extends ConsumerWidget {
         child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Overview', style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 24),
-          // Stats cards row/grid
+    
           LayoutBuilder(
             builder: (context, constraints) {
                 int crossAxisCount = 3;
@@ -303,11 +301,15 @@ class _LatestCoursesTable extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                       child: Row(
                         children: [
-                          SizedBox(width: 28, child: Text('${index + 1}'.padLeft(2, '0'))),
-                          const SizedBox(width: 8),
-                          CircleAvatar(
-                            backgroundColor: Colors.deepPurpleAccent.withAlpha(30),
-                            child: const Icon(Icons.menu_book, color: Colors.deepPurple),
+                          SizedBox(
+                            width: 40,
+                            child: CircleAvatar(
+                              backgroundColor: Colors.deepPurpleAccent.withAlpha(30),
+                              child: Text(
+                                _courseInitials(c.title),
+                                style: const TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.w600),
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -318,7 +320,20 @@ class _LatestCoursesTable extends ConsumerWidget {
                               style: Theme.of(context).textTheme.bodyLarge,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 120,
+                            child: Center(
+                              child: Text(
+                                _formatDate(c.createdAt),
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.black87),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
                           // Status: lessons, modules, availability lock
                           _CourseStatsPills(courseId: c.id, locked: c.locked),
                           const SizedBox(width: 12),
@@ -337,6 +352,38 @@ class _LatestCoursesTable extends ConsumerWidget {
   }
 }
 
+// Helpers for course list UI
+String _courseInitials(String title) {
+  final trimmed = title.trim();
+  if (trimmed.isEmpty) return 'C';
+  final parts = trimmed.split(RegExp(r'\s+'));
+  String initials;
+  if (parts.length >= 2) {
+    final a = parts[0].isNotEmpty ? parts[0][0] : '';
+    final b = parts[1].isNotEmpty ? parts[1][0] : '';
+    initials = '$a$b';
+  } else {
+    final p = parts[0];
+    initials = p.length >= 2 ? p.substring(0, 2) : p[0];
+  }
+  return initials.toUpperCase();
+}
+
+String _formatDate(dynamic value) {
+  if (value == null) return '—';
+  DateTime? dt;
+  if (value is DateTime) {
+    dt = value;
+  } else if (value is String) {
+    dt = DateTime.tryParse(value);
+  }
+  if (dt == null) return '—';
+  final y = dt.year.toString().padLeft(4, '0');
+  final m = dt.month.toString().padLeft(2, '0');
+  final d = dt.day.toString().padLeft(2, '0');
+  return '$y-$m-$d';
+}
+
 class _TableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -345,10 +392,10 @@ class _TableHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          SizedBox(width: 28, child: Text('#', style: style)),
-          const SizedBox(width: 8),
           const SizedBox(width: 40),
           Expanded(child: Text('Course Name', style: style)),
+          const SizedBox(width: 12),
+          SizedBox(width: 120, child: Center(child: Text('Created', style: style))),
           const SizedBox(width: 12),
           SizedBox(width: 120, child: Text('Status', style: style)),
         ],

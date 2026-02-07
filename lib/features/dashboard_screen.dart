@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 // import 'package:go_router/go_router.dart';
 import 'package:milpress_dashboard/features/course/course_repository.dart';
-import 'package:milpress_dashboard/features/lesson/lessons_repository.dart';
+import 'package:milpress_dashboard/features/lesson_v2/lesson_v2_repository.dart';
 import 'package:milpress_dashboard/features/auth/profiles_repository.dart';
 import 'package:milpress_dashboard/features/modules/modules_repository.dart';
 

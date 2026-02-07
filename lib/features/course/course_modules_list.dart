@@ -6,7 +6,8 @@ import '../modules/modules_repository.dart';
 import '../modules/edit_module_form.dart';
 import '../modules/delete_module_dialog.dart';
 
-import '../../features/lesson/lessons_repository.dart';
+import '../../features/lesson_v2/lesson_v2_models.dart';
+import '../../features/lesson_v2/lesson_v2_repository.dart';
 
 class CourseModulesList extends ConsumerWidget {
   final String courseId;
@@ -311,7 +312,7 @@ class LessonsDropdown extends ConsumerWidget {
 }
 
 class LessonCard extends StatelessWidget {
-  final dynamic lesson;
+  final NewLesson lesson;
   const LessonCard({super.key, required this.lesson});
 
   @override
@@ -336,90 +337,18 @@ class LessonCard extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Thumbnail
-            Container(
-              width: double.infinity,
-              height: 60,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: lesson.thumbnails != null && lesson.thumbnails.isNotEmpty
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        lesson.thumbnails,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          decoration: BoxDecoration(
-                            color: Colors.purple.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Center(
-                            child: Text(
-                              lesson.title.split(' ').first,
-                              style: TextStyle(
-                                color: Colors.purple.shade700,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  : Container(
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Center(
-                        child: Text(
-                          lesson.title.split(' ').first,
-                          style: TextStyle(
-                            color: Colors.purple.shade700,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ),
+        child: Center(
+          child: Text(
+            lesson.title,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
             ),
-            const SizedBox(height: 8),
-            // Title
-            Text(
-              lesson.title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            // Duration
-            if (lesson.durationMinutes != null)
-              Row(
-                children: [
-                  Icon(
-                    Icons.access_time,
-                    size: 14,
-                    color: Colors.grey.shade600,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${lesson.durationMinutes} min',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-          ],
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
         ),
       ),
     );

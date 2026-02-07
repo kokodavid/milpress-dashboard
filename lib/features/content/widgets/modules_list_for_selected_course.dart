@@ -4,8 +4,8 @@ import 'package:milpress_dashboard/utils/app_colors.dart';
 
 import '../../modules/modules_repository.dart';
 import '../../modules/create_module_form.dart';
-import '../../lesson/lessons_repository.dart';
-import '../../lesson/lesson_models.dart';
+import '../../lesson_v2/lesson_v2_repository.dart';
+import '../../lesson_v2/lesson_v2_models.dart';
 import '../state/lessons_list_controller.dart';
 import '../../../widgets/app_button.dart';
 
@@ -164,7 +164,8 @@ class _ModuleCard extends ConsumerWidget {
           children: [
             lessonsAsync.when(
               data: (lessons) {
-                final nextPosition = lessons.isEmpty ? 1 : (lessons.last.position + 1);
+                final nextPosition =
+                    lessons.isEmpty ? 1 : (lessons.last.displayOrder + 1);
                 return Column(
                   children: [
                     if (lessons.isEmpty)
@@ -246,13 +247,29 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
   late final TextEditingController _positionCtrl;
-  final _durationCtrl = TextEditingController();
-  final _videoCtrl = TextEditingController();
-  final _audioCtrl = TextEditingController();
-  final _thumbCtrl = TextEditingController();
-  final _contentCtrl = TextEditingController();
+  final List<_StepDraft> _steps = [];
+  int _currentStep = 0;
   bool _submitting = false;
-  int _selectedLevel = 1;
+  NewLesson? _createdLesson;
+  LessonType _lessonType = LessonType.letter;
+  static const List<String> _stepKeyOptions = [
+    'sound',
+    'example',
+    'exercise',
+    'formation',
+  ];
+  static const List<LessonStepType> _forcedStepTypes = [
+    LessonStepType.introduction,
+    LessonStepType.demonstration,
+    LessonStepType.practice,
+    LessonStepType.assessment,
+  ];
+  static const List<String> _forcedStepTitles = [
+    'Pronounciation',
+    'Letter Formation',
+    'Example Words',
+    'Exercise',
+  ];
 
   @override
   void initState() {
@@ -264,11 +281,9 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
   void dispose() {
     _titleCtrl.dispose();
     _positionCtrl.dispose();
-    _durationCtrl.dispose();
-    _videoCtrl.dispose();
-    _audioCtrl.dispose();
-    _thumbCtrl.dispose();
-    _contentCtrl.dispose();
+    for (final step in _steps) {
+      step.dispose();
+    }
     super.dispose();
   }
 
@@ -280,14 +295,12 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Container(
-        width: 600,
-        constraints: const BoxConstraints(maxHeight: 700),
+        width: 700,
+        constraints: const BoxConstraints(maxHeight: 760),
         padding: const EdgeInsets.all(24),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -306,413 +319,90 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            
-            // Form
+            const SizedBox(height: 16),
             Expanded(
-              child: SingleChildScrollView(
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              child: Stepper(
+                currentStep: _currentStep,
+                type: StepperType.horizontal,
+                controlsBuilder: (context, details) {
+                  final isLessonStep = _currentStep == 0;
+                  final isStepsStep = _currentStep == 1;
+                  final canBack = _currentStep > 0;
+                  final primaryLabel = isLessonStep
+                      ? (_createdLesson == null ? 'Create Lesson' : 'Continue')
+                      : 'Save Steps';
+                  return Row(
                     children: [
-                      // Lesson Title
-                      const Text(
-                        'Lesson Title*',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _titleCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Enter lesson title',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Lesson title is required' : null,
-                      ),
-                      const SizedBox(height: 20),
-                      
-                      // Position and Level
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Position',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _positionCtrl,
-                                  decoration: InputDecoration(
-                                    hintText: 'Enter level (e.g 1)',
-                                    hintStyle: TextStyle(color: Colors.grey.shade400),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.grey.shade300),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.grey.shade300),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
-                                    ),
-                                  ),
-                                  keyboardType: TextInputType.number,
-                                  validator: (v) {
-                                    if (v == null || v.isEmpty) return 'Required';
-                                    final n = int.tryParse(v);
-                                    if (n == null || n < 1) return 'Enter a valid number';
-                                    return null;
-                                  },
-                                ),
-                              ],
+                      if (canBack)
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _submitting
+                                ? null
+                                : () => setState(() => _currentStep -= 1),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              side: const BorderSide(color: Color(0xFFE85D04)),
+                              foregroundColor: const Color(0xFFE85D04),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
+                            child: const Text('Back'),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Level',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                DropdownButtonFormField<int>(
-                                  value: _selectedLevel,
-                                  decoration: InputDecoration(
-                                    hintText: 'Enter level (e.g 1)',
-                                    hintStyle: TextStyle(color: Colors.grey.shade400),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.grey.shade300),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.grey.shade300),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
-                                    ),
-                                  ),
-                                  items: List.generate(10, (index) => index + 1)
-                                      .map((level) => DropdownMenuItem(
-                                            value: level,
-                                            child: Text('Level $level'),
-                                          ))
-                                      .toList(),
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      setState(() {
-                                        _selectedLevel = value;
-                                      });
-                                    }
-                                  },
-                                ),
-                              ],
+                        ),
+                      if (canBack) const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _submitting
+                              ? null
+                              : () async {
+                                  if (isLessonStep) {
+                                    await _createLesson();
+                                  } else if (isStepsStep) {
+                                    await _saveSteps();
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE85D04),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
+                            elevation: 0,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      
-                      // Duration
-                      const Text(
-                        'Duration (in minutes)',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _durationCtrl,
-                        decoration: InputDecoration(
-                          hintText: '00 minutes',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 20),
-                      
-                      // Media content section
-                      const Text(
-                        'Media content',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      
-                      // Thumbnail URL
-                      const Text(
-                        'Thumbnail URL',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _thumbCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Enter thumbnail url',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Video URL
-                      const Text(
-                        'Video URL',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _videoCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Enter video url',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Audio URL
-                      const Text(
-                        'Audio URL',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _audioCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Enter audio url',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      
-                      // Content
-                      const Text(
-                        'Content',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _contentCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Enter content...',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        maxLines: 4,
-                      ),
-                      
-                      // Add extra content link
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () {
-                          // TODO: Implement add extra content functionality
-                        },
-                        child: const Text(
-                          '+ add extra content',
-                          style: TextStyle(
-                            color: Color(0xFFE85D04),
-                            fontSize: 14,
-                          ),
+                          child: _submitting
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor:
+                                        AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : Text(primaryLabel,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  )),
                         ),
                       ),
                     ],
+                  );
+                },
+                steps: [
+                  Step(
+                    title: const Text('Lesson'),
+                    isActive: _currentStep >= 0,
+                    content: _buildLessonForm(enabled: _createdLesson == null),
                   ),
-                ),
+                  Step(
+                    title: const Text('Steps'),
+                    isActive: _currentStep >= 1,
+                    content: _buildStepsForm(),
+                  ),
+                ],
               ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Action buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: const BorderSide(color: Color(0xFFE85D04)),
-                      foregroundColor: const Color(0xFFE85D04),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _submitting ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE85D04),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: _submitting
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Text(
-                            'Create Lesson',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -720,25 +410,739 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
     );
   }
 
-  Future<void> _submit() async {
+  Widget _buildLessonForm({required bool enabled}) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Lesson Title*',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _titleCtrl,
+            enabled: enabled,
+            decoration: InputDecoration(
+              hintText: 'Enter lesson title',
+              hintStyle: TextStyle(color: Colors.grey.shade400),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFE85D04)),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+            ),
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? 'Lesson title is required' : null,
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Position',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _positionCtrl,
+                      enabled: enabled,
+                      decoration: InputDecoration(
+                        hintText: 'Enter position',
+                        hintStyle: TextStyle(color: Colors.grey.shade400),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Color(0xFFE85D04)),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Required';
+                        final n = int.tryParse(v);
+                        if (n == null || n < 1) return 'Enter a valid number';
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Lesson Type',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<LessonType>(
+                      value: _lessonType,
+                      decoration: InputDecoration(
+                        hintText: 'Select type',
+                        hintStyle: TextStyle(color: Colors.grey.shade400),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Color(0xFFE85D04)),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      items: LessonType.values
+                          .map(
+                            (type) => DropdownMenuItem(
+                              value: type,
+                              child: Text(type.name),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: enabled
+                          ? (value) {
+                              if (value != null) {
+                                setState(() {
+                                  _lessonType = value;
+                                });
+                              }
+                            }
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (!enabled) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Lesson created. Add steps below.',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepsForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Lesson Steps',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: _submitting ? null : _addStep,
+              icon: const Icon(Icons.add),
+              label: const Text('Add Step'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_steps.isEmpty)
+          const Text('No steps added yet')
+        else
+          Column(
+            children: [
+              for (var i = 0; i < _steps.length; i++)
+                _buildStepCard(_steps[i], i),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildStepCard(_StepDraft step, int index) {
+    final isForcedType = index < _forcedStepTypes.length;
+    final isForcedKey = index < _stepKeyOptions.length;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      elevation: 0,
+      color: Colors.grey.shade50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Step ${index + 1}',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: index == 0 ? null : () => _moveStep(index, index - 1),
+                  icon: const Icon(Icons.arrow_upward, size: 18),
+                  tooltip: 'Move up',
+                ),
+                IconButton(
+                  onPressed: index == _steps.length - 1
+                      ? null
+                      : () => _moveStep(index, index + 1),
+                  icon: const Icon(Icons.arrow_downward, size: 18),
+                  tooltip: 'Move down',
+                ),
+                IconButton(
+                  onPressed: () => _removeStep(index),
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  tooltip: 'Remove step',
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _stepKeyOptions.contains(step.stepKeyCtrl.text)
+                        ? step.stepKeyCtrl.text
+                        : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Step Key',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _stepKeyOptions
+                        .map(
+                          (value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: isForcedKey
+                        ? null
+                        : (value) {
+                          if (value != null) {
+                            setState(() => step.stepKeyCtrl.text = value);
+                          }
+                        },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonFormField<LessonStepType>(
+                    value: step.stepType,
+                    decoration: const InputDecoration(
+                      labelText: 'Step Type',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: LessonStepType.values
+                        .map(
+                          (type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(type.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: isForcedType
+                        ? null
+                        : (value) {
+                          if (value != null) {
+                            setState(() => step.setStepType(value));
+                          }
+                        },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Row(
+                  children: [
+                    const Text('Required'),
+                    Switch(
+                      value: step.required,
+                      onChanged: (value) => setState(() => step.required = value),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildStepTypeFields(step),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepTypeFields(_StepDraft step) {
+    switch (step.stepType) {
+      case LessonStepType.introduction:
+        return _buildIntroductionFields(step, lockTitle: _isLockedTitle(step));
+      case LessonStepType.demonstration:
+        return _buildDemonstrationFields(step, lockTitle: _isLockedTitle(step));
+      case LessonStepType.practice:
+        return _buildPracticeFields(step, lockTitle: _isLockedTitle(step));
+      case LessonStepType.assessment:
+        return _buildAssessmentFields(step, lockTitle: _isLockedTitle(step));
+    }
+  }
+
+  Widget _buildIntroductionFields(_StepDraft step, {required bool lockTitle}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: step.titleCtrl,
+          enabled: !lockTitle,
+          decoration: const InputDecoration(
+            labelText: 'Title',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: step.displayTextCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Display Text',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: step.audioBaseUrlCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Audio Base URL',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: step.audio05Ctrl,
+                decoration: const InputDecoration(
+                  labelText: 'Audio 0.5x URL',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextFormField(
+                controller: step.audio1Ctrl,
+                decoration: const InputDecoration(
+                  labelText: 'Audio 1x URL',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextFormField(
+                controller: step.audio15Ctrl,
+                decoration: const InputDecoration(
+                  labelText: 'Audio 1.5x URL',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: step.howToSvgUrlCtrl,
+          decoration: const InputDecoration(
+            labelText: 'How-to SVG URL',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: step.practiceTipTextCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Practice Tip Text',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: step.practiceTipAudioCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Practice Tip Audio URL',
+            border: OutlineInputBorder(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDemonstrationFields(_StepDraft step, {required bool lockTitle}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: step.titleCtrl,
+          enabled: !lockTitle,
+          decoration: const InputDecoration(
+            labelText: 'Title',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Image URLs',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 6),
+        for (var i = 0; i < step.imageUrlCtrls.length; i++)
+          _buildUrlRow(
+            controller: step.imageUrlCtrls[i],
+            onRemove: () => setState(() => step.removeImageUrl(i)),
+          ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => setState(step.addImageUrl),
+            icon: const Icon(Icons.add),
+            label: const Text('Add image'),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: step.feedbackTitleCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Feedback Title',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: step.feedbackBodyCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Feedback Body',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 2,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPracticeFields(_StepDraft step, {required bool lockTitle}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: step.titleCtrl,
+          enabled: !lockTitle,
+          decoration: const InputDecoration(
+            labelText: 'Title',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Items',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 6),
+        for (var i = 0; i < step.practiceItems.length; i++)
+          _buildPracticeItemRow(
+            item: step.practiceItems[i],
+            onRemove: () => setState(() => step.removePracticeItem(i)),
+          ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => setState(step.addPracticeItem),
+            icon: const Icon(Icons.add),
+            label: const Text('Add item'),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: step.tipTextCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Tip Text',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: step.tipSoundCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Tip Sound URL',
+            border: OutlineInputBorder(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAssessmentFields(_StepDraft step, {required bool lockTitle}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: step.titleCtrl,
+          enabled: !lockTitle,
+          decoration: const InputDecoration(
+            labelText: 'Title',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: step.promptCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Prompt',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: step.soundInstructionCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Sound Instruction URL',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Options',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 6),
+        for (var i = 0; i < step.assessmentOptions.length; i++)
+          _buildAssessmentOptionRow(
+            option: step.assessmentOptions[i],
+            onRemove: () => setState(() => step.removeAssessmentOption(i)),
+          ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => setState(step.addAssessmentOption),
+            icon: const Icon(Icons.add),
+            label: const Text('Add option'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUrlRow({
+    required TextEditingController controller,
+    required VoidCallback onRemove,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextFormField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Image URL',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: onRemove,
+            icon: const Icon(Icons.close),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPracticeItemRow({
+    required _PracticeItemDraft item,
+    required VoidCallback onRemove,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: item.labelCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Label',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextFormField(
+                  controller: item.imageUrlCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Image URL',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: item.soundUrlCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Sound URL',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: onRemove,
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAssessmentOptionRow({
+    required _AssessmentOptionDraft option,
+    required VoidCallback onRemove,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: option.labelCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Label',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextFormField(
+                  controller: option.imageUrlCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Image URL',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Row(
+                children: [
+                  Checkbox(
+                    value: option.isCorrect,
+                    onChanged: (value) =>
+                        setState(() => option.isCorrect = value ?? false),
+                  ),
+                  const Text('Correct'),
+                ],
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: onRemove,
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _createLesson() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_createdLesson != null) {
+      setState(() => _currentStep = 1);
+      return;
+    }
     final title = _titleCtrl.text.trim();
     final pos = int.parse(_positionCtrl.text.trim());
-    final duration = _durationCtrl.text.trim().isEmpty ? null : int.tryParse(_durationCtrl.text.trim());
     setState(() => _submitting = true);
     try {
-      final input = LessonCreate(
+      final input = NewLessonCreate(
         moduleId: widget.moduleId,
         title: title,
-        position: pos,
-        content: _contentCtrl.text.trim().isEmpty ? null : _contentCtrl.text.trim(),
-        videoUrl: _videoCtrl.text.trim().isEmpty ? null : _videoCtrl.text.trim(),
-        audioUrl: _audioCtrl.text.trim().isEmpty ? null : _audioCtrl.text.trim(),
-        durationMinutes: duration,
-        thumbnails: _thumbCtrl.text.trim().isEmpty ? null : _thumbCtrl.text.trim(),
+        lessonType: _lessonType,
+        displayOrder: pos,
       );
-      await ref.read(createLessonProvider.notifier).create(input);
-      if (mounted) Navigator.of(context).pop(true);
+      final created = await ref.read(saveLessonProvider.notifier).create(input, const []);
+      _createdLesson = created;
+      if (mounted) {
+        if (_steps.isEmpty) {
+          _addDefaultSteps(4);
+          _applyForcedRules();
+        }
+        setState(() => _currentStep = 1);
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -748,11 +1152,381 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
       if (mounted) setState(() => _submitting = false);
     }
   }
+
+  Future<void> _saveSteps() async {
+    if (_createdLesson == null) return;
+    final error = _validateSteps();
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    try {
+      final inputs = _steps.map((s) => s.toInput()).toList();
+      await ref.read(saveLessonProvider.notifier).updateSteps(
+            _createdLesson!.id,
+            inputs,
+          );
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save steps: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  String? _validateSteps() {
+    if (_steps.isEmpty) {
+      return 'Add at least one step';
+    }
+    for (final step in _steps) {
+      if (step.stepKeyCtrl.text.trim().isEmpty) {
+        return 'Every step needs a step key';
+      }
+      if (step.titleCtrl.text.trim().isEmpty) {
+        return 'Every step needs a title';
+      }
+      if (step.stepType == LessonStepType.practice &&
+          step.practiceItems.isEmpty) {
+        return 'Practice steps need at least one item';
+      }
+      if (step.stepType == LessonStepType.assessment &&
+          step.assessmentOptions.isEmpty) {
+        return 'Assessment steps need at least one option';
+      }
+      if (step.stepType == LessonStepType.assessment &&
+          step.assessmentOptions.every((o) => !o.isCorrect)) {
+        return 'Assessment steps need at least one correct option';
+      }
+      if (step.stepType == LessonStepType.introduction &&
+          step.displayTextCtrl.text.trim().isEmpty) {
+        return 'Introduction steps need display text';
+      }
+      if (step.stepType == LessonStepType.assessment &&
+          step.promptCtrl.text.trim().isEmpty) {
+        return 'Assessment steps need a prompt';
+      }
+    }
+    return null;
+  }
+
+  void _addStep() {
+    setState(() {
+      _steps.add(_StepDraft(
+        position: _steps.length + 1,
+        stepKey: _stepKeyOptions.first,
+      ));
+      _applyForcedRules();
+    });
+  }
+
+  void _addDefaultSteps(int count) {
+    for (var i = 0; i < count; i++) {
+      _steps.add(_StepDraft(
+        position: _steps.length + 1,
+        stepKey: _stepKeyOptions.first,
+      ));
+    }
+  }
+
+  void _removeStep(int index) {
+    setState(() {
+      _steps[index].dispose();
+      _steps.removeAt(index);
+      _reindexSteps();
+      _applyForcedRules();
+    });
+  }
+
+  void _moveStep(int from, int to) {
+    setState(() {
+      final step = _steps.removeAt(from);
+      _steps.insert(to, step);
+      _reindexSteps();
+      _applyForcedRules();
+    });
+  }
+
+  void _reindexSteps() {
+    for (var i = 0; i < _steps.length; i++) {
+      _steps[i].position = i + 1;
+    }
+  }
+
+  void _applyForcedRules() {
+    for (var i = 0; i < _steps.length && i < _forcedStepTypes.length; i++) {
+      _steps[i].stepType = _forcedStepTypes[i];
+      _steps[i].stepKeyCtrl.text = _stepKeyOptions[i];
+      if (i < _forcedStepTitles.length) {
+        _steps[i].titleCtrl.text = _forcedStepTitles[i];
+      }
+    }
+  }
+
+  bool _isLockedTitle(_StepDraft step) =>
+      (step.position - 1) < _forcedStepTitles.length;
+}
+
+class _StepDraft {
+  _StepDraft({
+    required int position,
+    required String stepKey,
+  })  : position = position,
+        stepType = LessonStepType.introduction,
+        stepKeyCtrl = TextEditingController(text: stepKey),
+        titleCtrl = TextEditingController(),
+        displayTextCtrl = TextEditingController(),
+        audioBaseUrlCtrl = TextEditingController(),
+        audio05Ctrl = TextEditingController(),
+        audio1Ctrl = TextEditingController(),
+        audio15Ctrl = TextEditingController(),
+        howToSvgUrlCtrl = TextEditingController(),
+        practiceTipTextCtrl = TextEditingController(),
+        practiceTipAudioCtrl = TextEditingController(),
+        feedbackTitleCtrl = TextEditingController(),
+        feedbackBodyCtrl = TextEditingController(),
+        tipTextCtrl = TextEditingController(),
+        tipSoundCtrl = TextEditingController(),
+        promptCtrl = TextEditingController(),
+        soundInstructionCtrl = TextEditingController();
+
+  int position;
+  LessonStepType stepType;
+  bool required = true;
+
+  final TextEditingController stepKeyCtrl;
+  final TextEditingController titleCtrl;
+
+  final TextEditingController displayTextCtrl;
+  final TextEditingController audioBaseUrlCtrl;
+  final TextEditingController audio05Ctrl;
+  final TextEditingController audio1Ctrl;
+  final TextEditingController audio15Ctrl;
+  final TextEditingController howToSvgUrlCtrl;
+  final TextEditingController practiceTipTextCtrl;
+  final TextEditingController practiceTipAudioCtrl;
+
+  final TextEditingController feedbackTitleCtrl;
+  final TextEditingController feedbackBodyCtrl;
+  final List<TextEditingController> imageUrlCtrls = [];
+
+  final List<_PracticeItemDraft> practiceItems = [];
+  final TextEditingController tipTextCtrl;
+  final TextEditingController tipSoundCtrl;
+
+  final TextEditingController promptCtrl;
+  final TextEditingController soundInstructionCtrl;
+  final List<_AssessmentOptionDraft> assessmentOptions = [];
+
+  void setStepType(LessonStepType type) {
+    stepType = type;
+    if (type == LessonStepType.demonstration && imageUrlCtrls.isEmpty) {
+      addImageUrl();
+    }
+    if (type == LessonStepType.practice && practiceItems.isEmpty) {
+      addPracticeItem();
+    }
+    if (type == LessonStepType.assessment && assessmentOptions.isEmpty) {
+      addAssessmentOption();
+    }
+  }
+
+  void addImageUrl() => imageUrlCtrls.add(TextEditingController());
+  void removeImageUrl(int index) {
+    imageUrlCtrls[index].dispose();
+    imageUrlCtrls.removeAt(index);
+  }
+
+  void addPracticeItem() => practiceItems.add(_PracticeItemDraft());
+  void removePracticeItem(int index) {
+    practiceItems[index].dispose();
+    practiceItems.removeAt(index);
+  }
+
+  void addAssessmentOption() => assessmentOptions.add(_AssessmentOptionDraft());
+  void removeAssessmentOption(int index) {
+    assessmentOptions[index].dispose();
+    assessmentOptions.removeAt(index);
+  }
+
+  LessonStepInput toInput() {
+    return LessonStepInput(
+      stepKey: stepKeyCtrl.text.trim(),
+      stepType: stepType,
+      position: position,
+      required: required,
+      config: _buildConfig(),
+    );
+  }
+
+  Map<String, dynamic> _buildConfig() {
+    switch (stepType) {
+      case LessonStepType.introduction:
+        final speedVariants = <String, String>{};
+        if (audio05Ctrl.text.trim().isNotEmpty) {
+          speedVariants['0.5x'] = audio05Ctrl.text.trim();
+        }
+        if (audio1Ctrl.text.trim().isNotEmpty) {
+          speedVariants['1x'] = audio1Ctrl.text.trim();
+        }
+        if (audio15Ctrl.text.trim().isNotEmpty) {
+          speedVariants['1.5x'] = audio15Ctrl.text.trim();
+        }
+        final audio = <String, dynamic>{};
+        if (audioBaseUrlCtrl.text.trim().isNotEmpty) {
+          audio['base_url'] = audioBaseUrlCtrl.text.trim();
+        }
+        if (speedVariants.isNotEmpty) {
+          audio['speed_variants'] = speedVariants;
+        }
+        final practiceTip = <String, dynamic>{};
+        if (practiceTipTextCtrl.text.trim().isNotEmpty) {
+          practiceTip['text'] = practiceTipTextCtrl.text.trim();
+        }
+        if (practiceTipAudioCtrl.text.trim().isNotEmpty) {
+          practiceTip['audio_url'] = practiceTipAudioCtrl.text.trim();
+        }
+        return {
+          'title': titleCtrl.text.trim(),
+          'display_text': displayTextCtrl.text.trim(),
+          if (audio.isNotEmpty) 'audio': audio,
+          if (howToSvgUrlCtrl.text.trim().isNotEmpty)
+            'how_to_svg_url': howToSvgUrlCtrl.text.trim(),
+          if (practiceTip.isNotEmpty) 'practice_tip': practiceTip,
+        };
+      case LessonStepType.demonstration:
+        final images = imageUrlCtrls
+            .map((c) => c.text.trim())
+            .where((v) => v.isNotEmpty)
+            .toList();
+        return {
+          'title': titleCtrl.text.trim(),
+          if (images.isNotEmpty) 'image_urls': images,
+          if (feedbackTitleCtrl.text.trim().isNotEmpty)
+            'feedbackTitle': feedbackTitleCtrl.text.trim(),
+          if (feedbackBodyCtrl.text.trim().isNotEmpty)
+            'feedbackBody': feedbackBodyCtrl.text.trim(),
+        };
+      case LessonStepType.practice:
+        final items = practiceItems
+            .map((item) => item.toMap())
+            .where((m) => m.isNotEmpty)
+            .toList();
+        final tip = <String, dynamic>{};
+        if (tipTextCtrl.text.trim().isNotEmpty) {
+          tip['text'] = tipTextCtrl.text.trim();
+        }
+        if (tipSoundCtrl.text.trim().isNotEmpty) {
+          tip['sound_url'] = tipSoundCtrl.text.trim();
+        }
+        return {
+          'title': titleCtrl.text.trim(),
+          if (items.isNotEmpty) 'items': items,
+          if (tip.isNotEmpty) 'tip': tip,
+        };
+      case LessonStepType.assessment:
+        final options = assessmentOptions
+            .map((option) => option.toMap())
+            .where((m) => m.isNotEmpty)
+            .toList();
+        return {
+          'title': titleCtrl.text.trim(),
+          'prompt': promptCtrl.text.trim(),
+          if (soundInstructionCtrl.text.trim().isNotEmpty)
+            'sound_instruction_url': soundInstructionCtrl.text.trim(),
+          if (options.isNotEmpty) 'options': options,
+        };
+    }
+  }
+
+  void dispose() {
+    stepKeyCtrl.dispose();
+    titleCtrl.dispose();
+    displayTextCtrl.dispose();
+    audioBaseUrlCtrl.dispose();
+    audio05Ctrl.dispose();
+    audio1Ctrl.dispose();
+    audio15Ctrl.dispose();
+    howToSvgUrlCtrl.dispose();
+    practiceTipTextCtrl.dispose();
+    practiceTipAudioCtrl.dispose();
+    feedbackTitleCtrl.dispose();
+    feedbackBodyCtrl.dispose();
+    for (final ctrl in imageUrlCtrls) {
+      ctrl.dispose();
+    }
+    for (final item in practiceItems) {
+      item.dispose();
+    }
+    tipTextCtrl.dispose();
+    tipSoundCtrl.dispose();
+    promptCtrl.dispose();
+    soundInstructionCtrl.dispose();
+    for (final option in assessmentOptions) {
+      option.dispose();
+    }
+  }
+}
+
+class _PracticeItemDraft {
+  final TextEditingController labelCtrl = TextEditingController();
+  final TextEditingController imageUrlCtrl = TextEditingController();
+  final TextEditingController soundUrlCtrl = TextEditingController();
+
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{};
+    if (labelCtrl.text.trim().isNotEmpty) {
+      map['label'] = labelCtrl.text.trim();
+    }
+    if (imageUrlCtrl.text.trim().isNotEmpty) {
+      map['image_url'] = imageUrlCtrl.text.trim();
+    }
+    if (soundUrlCtrl.text.trim().isNotEmpty) {
+      map['sound_url'] = soundUrlCtrl.text.trim();
+    }
+    return map;
+  }
+
+  void dispose() {
+    labelCtrl.dispose();
+    imageUrlCtrl.dispose();
+    soundUrlCtrl.dispose();
+  }
+}
+
+class _AssessmentOptionDraft {
+  final TextEditingController labelCtrl = TextEditingController();
+  final TextEditingController imageUrlCtrl = TextEditingController();
+  bool isCorrect = false;
+
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{};
+    if (labelCtrl.text.trim().isNotEmpty) {
+      map['label'] = labelCtrl.text.trim();
+    }
+    if (imageUrlCtrl.text.trim().isNotEmpty) {
+      map['image_url'] = imageUrlCtrl.text.trim();
+    }
+    map['is_correct'] = isCorrect;
+    return map;
+  }
+
+  void dispose() {
+    labelCtrl.dispose();
+    imageUrlCtrl.dispose();
+  }
 }
 
 class _LessonCard extends ConsumerWidget {
   const _LessonCard({required this.lesson});
-  final Lesson lesson;
+  final NewLesson lesson;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -771,9 +1545,10 @@ class _LessonCard extends ConsumerWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
         title: Text(lesson.title),
-        trailing: lesson.durationMinutes != null 
-            ? Text('${lesson.durationMinutes}min', style: TextStyle(color: Colors.grey.shade600))
-            : null,
+        trailing: Text(
+          lesson.lessonType.name,
+          style: TextStyle(color: Colors.grey.shade600),
+        ),
         onTap: () {
           ref.read(selectedLessonIdProvider.notifier).state = lesson.id;
         },

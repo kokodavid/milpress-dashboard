@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../lesson/lessons_repository.dart';
-import '../../lesson/lesson_models.dart';
+import '../../lesson_v2/lesson_v2_models.dart';
+import '../../lesson_v2/lesson_v2_repository.dart';
 
-// Export the edit lesson dialog function
 Future<void> showEditLessonDialog({
   required BuildContext context,
   required WidgetRef ref,
-  required dynamic lesson,
+  required NewLesson lesson,
   required VoidCallback onUpdated,
 }) {
   return showDialog<void>(
@@ -20,14 +19,14 @@ Future<void> showEditLessonDialog({
   );
 }
 
-// Export the EditLessonDialog class 
 class EditLessonDialog extends ConsumerStatefulWidget {
   const EditLessonDialog({
-    super.key, 
+    super.key,
     required this.lesson,
     required this.onUpdated,
   });
-  final dynamic lesson;
+
+  final NewLesson lesson;
   final VoidCallback onUpdated;
 
   @override
@@ -38,37 +37,22 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleCtrl;
   late final TextEditingController _positionCtrl;
-  late final TextEditingController _durationCtrl;
-  late final TextEditingController _videoCtrl;
-  late final TextEditingController _audioCtrl;
-  late final TextEditingController _thumbCtrl;
-  late final TextEditingController _contentCtrl;
   bool _submitting = false;
-  late int _selectedLevel;
+  late LessonType _lessonType;
 
   @override
   void initState() {
     super.initState();
     _titleCtrl = TextEditingController(text: widget.lesson.title);
-    _positionCtrl = TextEditingController(text: widget.lesson.position.toString());
-    _durationCtrl = TextEditingController(text: widget.lesson.durationMinutes?.toString() ?? '');
-    _videoCtrl = TextEditingController(text: widget.lesson.videoUrl ?? '');
-    _audioCtrl = TextEditingController(text: widget.lesson.audioUrl ?? '');
-    _thumbCtrl = TextEditingController(text: widget.lesson.thumbnails ?? '');
-    _contentCtrl = TextEditingController(text: widget.lesson.content ?? '');
-    // Parse level from string to int, default to 1 if not found or invalid
-    _selectedLevel = int.tryParse(widget.lesson.level ?? '1') ?? 1;
+    _positionCtrl =
+        TextEditingController(text: widget.lesson.displayOrder.toString());
+    _lessonType = widget.lesson.lessonType;
   }
 
   @override
   void dispose() {
     _titleCtrl.dispose();
     _positionCtrl.dispose();
-    _durationCtrl.dispose();
-    _videoCtrl.dispose();
-    _audioCtrl.dispose();
-    _thumbCtrl.dispose();
-    _contentCtrl.dispose();
     super.dispose();
   }
 
@@ -81,13 +65,12 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
       ),
       child: Container(
         width: 600,
-        constraints: const BoxConstraints(maxHeight: 700),
+        constraints: const BoxConstraints(maxHeight: 600),
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -107,8 +90,6 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
               ],
             ),
             const SizedBox(height: 24),
-            
-            // Form
             Expanded(
               child: SingleChildScrollView(
                 child: Form(
@@ -116,7 +97,6 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Lesson Title
                       const Text(
                         'Lesson Title*',
                         style: TextStyle(
@@ -148,11 +128,10 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
                             vertical: 12,
                           ),
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Lesson title is required' : null,
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? 'Lesson title is required' : null,
                       ),
                       const SizedBox(height: 20),
-                      
-                      // Position and Level
                       Row(
                         children: [
                           Expanded(
@@ -207,7 +186,7 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'Level',
+                                  'Lesson Type',
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
@@ -215,10 +194,10 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                DropdownButtonFormField<int>(
-                                  value: _selectedLevel,
+                                DropdownButtonFormField<LessonType>(
+                                  value: _lessonType,
                                   decoration: InputDecoration(
-                                    hintText: 'Select level',
+                                    hintText: 'Select type',
                                     hintStyle: TextStyle(color: Colors.grey.shade400),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(8),
@@ -237,17 +216,17 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
                                       vertical: 12,
                                     ),
                                   ),
-                                  items: List.generate(10, (index) => index + 1)
-                                      .map((level) => DropdownMenuItem(
-                                            value: level,
-                                            child: Text('Level $level'),
-                                          ))
+                                  items: LessonType.values
+                                      .map(
+                                        (type) => DropdownMenuItem(
+                                          value: type,
+                                          child: Text(type.name),
+                                        ),
+                                      )
                                       .toList(),
                                   onChanged: (value) {
                                     if (value != null) {
-                                      setState(() {
-                                        _selectedLevel = value;
-                                      });
+                                      setState(() => _lessonType = value);
                                     }
                                   },
                                 ),
@@ -256,218 +235,12 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-                      
-                      // Duration
-                      const Text(
-                        'Duration (in minutes)',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _durationCtrl,
-                        decoration: InputDecoration(
-                          hintText: '00 minutes',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 20),
-                      
-                      // Media content section
-                      const Text(
-                        'Media content',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      
-                      // Thumbnail URL
-                      const Text(
-                        'Thumbnail URL',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _thumbCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Enter thumbnail url',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Video URL
-                      const Text(
-                        'Video URL',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _videoCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Enter video url',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Audio URL
-                      const Text(
-                        'Audio URL',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      TextFormField(
-                        controller: _audioCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Enter audio url',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      
-                      // Content
-                      const Text(
-                        'Content',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _contentCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Enter content...',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        maxLines: 4,
-                      ),
-                      
-                      // Add extra content link
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () {
-                          // TODO: Implement add extra content functionality
-                        },
-                        child: const Text(
-                          '+ add extra content',
-                          style: TextStyle(
-                            color: Color(0xFFE85D04),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
               ),
             ),
-            
             const SizedBox(height: 24),
-            
-            // Action buttons
             Row(
               children: [
                 Expanded(
@@ -507,7 +280,7 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
                             ),
                           )
                         : const Text(
-                            'Update Lesson',
+                            'Save Changes',
                             style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                   ),
@@ -524,29 +297,17 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
     if (!_formKey.currentState!.validate()) return;
     final title = _titleCtrl.text.trim();
     final pos = int.parse(_positionCtrl.text.trim());
-    final duration = _durationCtrl.text.trim().isEmpty ? null : int.tryParse(_durationCtrl.text.trim());
-    
+
     setState(() => _submitting = true);
     try {
-      // Create LessonUpdate object
-      final update = LessonUpdate(
+      final update = NewLessonUpdate(
         title: title,
-        position: pos,
-        content: _contentCtrl.text.trim().isEmpty ? null : _contentCtrl.text.trim(),
-        videoUrl: _videoCtrl.text.trim().isEmpty ? null : _videoCtrl.text.trim(),
-        audioUrl: _audioCtrl.text.trim().isEmpty ? null : _audioCtrl.text.trim(),
-        durationMinutes: duration,
-        thumbnails: _thumbCtrl.text.trim().isEmpty ? null : _thumbCtrl.text.trim(),
-        level: _selectedLevel.toString(),
+        displayOrder: pos,
+        lessonType: _lessonType,
       );
-      
-      // Call the update lesson provider
-      await ref.read(updateLessonProvider.notifier).update(widget.lesson.id, update);
-      
+      await ref.read(saveLessonProvider.notifier).update(widget.lesson.id, update);
       if (mounted) {
-        // Call the onUpdated callback to refresh the UI
         widget.onUpdated();
-        
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Lesson updated successfully')),

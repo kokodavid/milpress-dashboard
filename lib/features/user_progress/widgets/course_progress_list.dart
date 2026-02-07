@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../utils/app_colors.dart';
 import '../../course/course_repository.dart';
 import '../../modules/modules_repository.dart';
-import '../../lesson/lessons_repository.dart';
+import '../../lesson_v2/lesson_v2_repository.dart';
 import '../user_progress_models.dart';
 import 'status_chip.dart';
 import 'percentage_label.dart';

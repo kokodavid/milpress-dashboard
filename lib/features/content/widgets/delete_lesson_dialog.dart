@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../lesson/lessons_repository.dart';
+import '../../lesson_v2/lesson_v2_models.dart';
+import '../../lesson_v2/lesson_v2_repository.dart';
 import '../../../widgets/app_button.dart';
 
 Future<void> showDeleteLessonDialog({
   required BuildContext context,
   required WidgetRef ref,
-  required dynamic lesson,
+  required NewLesson lesson,
   required VoidCallback onDeleted,
 }) {
   return showDialog(
@@ -21,7 +22,7 @@ Future<void> showDeleteLessonDialog({
 }
 
 class _DeleteLessonDialog extends StatefulWidget {
-  final dynamic lesson;
+  final NewLesson lesson;
   final WidgetRef ref;
   final VoidCallback onDeleted;
 
@@ -107,7 +108,7 @@ class _DeleteLessonDialogState extends State<_DeleteLessonDialog> {
                         ),
                         child: Center(
                           child: Text(
-                            '${widget.lesson.position}',
+                            '${widget.lesson.displayOrder}',
                             style: TextStyle(
                               color: Colors.purple.shade700,
                               fontWeight: FontWeight.w600,
@@ -130,34 +131,12 @@ class _DeleteLessonDialogState extends State<_DeleteLessonDialog> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                if (widget.lesson.durationMinutes != null) ...[
-                                  Icon(
-                                    Icons.access_time,
-                                    size: 14,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${widget.lesson.durationMinutes}min',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                ],
-                                if (widget.lesson.level != null) ...[
-                                  Text(
-                                    'Level ${widget.lesson.level}',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ],
+                            Text(
+                              widget.lesson.lessonType.name,
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
@@ -253,9 +232,8 @@ class _DeleteLessonDialogState extends State<_DeleteLessonDialog> {
         widget.lesson.id,
         details: {
           'title': widget.lesson.title,
-          'position': widget.lesson.position,
-          if (widget.lesson.durationMinutes != null)
-            'duration_minutes': widget.lesson.durationMinutes,
+          'display_order': widget.lesson.displayOrder,
+          'lesson_type': widget.lesson.lessonType.name,
         },
       );
       

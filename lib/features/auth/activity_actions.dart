@@ -21,4 +21,17 @@ class ActivityActions {
   static const String lessonQuizCreated = 'lesson_quiz_created';
   static const String lessonQuizUpdated = 'lesson_quiz_updated';
   static const String lessonQuizDeleted = 'lesson_quiz_deleted';
+
+  // Assessment V2 actions
+  static const String assessmentV2Created = 'assessment_v2_created';
+  static const String assessmentV2Updated = 'assessment_v2_updated';
+  static const String assessmentV2Deleted = 'assessment_v2_deleted';
+
+  static const String assessmentLevelCreated = 'assessment_level_created';
+  static const String assessmentLevelUpdated = 'assessment_level_updated';
+  static const String assessmentLevelDeleted = 'assessment_level_deleted';
+
+  static const String assessmentSublevelCreated = 'assessment_sublevel_created';
+  static const String assessmentSublevelUpdated = 'assessment_sublevel_updated';
+  static const String assessmentSublevelDeleted = 'assessment_sublevel_deleted';
 }

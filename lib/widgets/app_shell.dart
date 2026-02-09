@@ -29,6 +29,8 @@ class _AppShellState extends State<AppShell> {
           return 'Courses';
         case '/lessons':
           return 'Lessons';
+        case '/assessments':
+          return 'Assessments';
         case '/users':
           return 'Users';
         case '/settings':

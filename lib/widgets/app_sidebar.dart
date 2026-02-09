@@ -117,6 +117,14 @@ class AppSidebar extends ConsumerWidget {
                     onTap: () => context.go('/lessons'),
                     isCollapsed: isCollapsed,
                   ),
+                  if (!isCollapsed) const SizedBox(height: 4),
+                  _SidebarNavTile(
+                    icon: Icons.assignment_outlined,
+                    label: 'Assessments',
+                    selected: selectedRoute == '/assessments',
+                    onTap: () => context.go('/assessments'),
+                    isCollapsed: isCollapsed,
+                  ),
                   if (!isCollapsed) ...[
                     const SizedBox(height: 20),
                     _SidebarSectionLabel('Users Management'),

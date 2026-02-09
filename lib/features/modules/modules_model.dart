@@ -6,6 +6,8 @@ class Module {
   final bool locked;
   final String? lockMessage;
   final String? description;
+  final String moduleType;
+  final String? assessmentId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -17,6 +19,8 @@ class Module {
     this.locked = false,
     this.lockMessage,
     this.description,
+    this.moduleType = 'lesson',
+    this.assessmentId,
     this.createdAt,
     this.updatedAt,
   });
@@ -30,6 +34,8 @@ class Module {
       locked: (json['locked'] as bool?) ?? false,
       lockMessage: json['lock_message'] as String?,
       description: json['description'] as String?,
+      moduleType: (json['module_type'] as String?) ?? 'lesson',
+      assessmentId: json['assessment_id'] as String?,
       createdAt: _toDateTime(json['created_at']),
       updatedAt: _toDateTime(json['updated_at']),
     );
@@ -44,6 +50,8 @@ class Module {
       'locked': locked,
       'lock_message': lockMessage,
       'description': description,
+      'module_type': moduleType,
+      'assessment_id': assessmentId,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };
@@ -63,6 +71,8 @@ class Module {
     bool? locked,
     String? lockMessage,
     String? description,
+    String? moduleType,
+    String? assessmentId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -74,6 +84,8 @@ class Module {
       locked: locked ?? this.locked,
       lockMessage: lockMessage ?? this.lockMessage,
       description: description ?? this.description,
+      moduleType: moduleType ?? this.moduleType,
+      assessmentId: assessmentId ?? this.assessmentId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -87,6 +99,8 @@ class ModuleCreate {
   final bool locked;
   final String? lockMessage;
   final String? description;
+  final String moduleType;
+  final String? assessmentId;
 
   ModuleCreate({
     required this.courseId,
@@ -95,6 +109,8 @@ class ModuleCreate {
     this.locked = false,
     this.lockMessage,
     this.description,
+    this.moduleType = 'lesson',
+    this.assessmentId,
   });
 
   Map<String, dynamic> toInsertMap() {
@@ -105,6 +121,8 @@ class ModuleCreate {
       'locked': locked,
       if (lockMessage != null) 'lock_message': lockMessage,
       if (description != null) 'description': description,
+      'module_type': moduleType,
+      if (assessmentId != null) 'assessment_id': assessmentId,
     };
   }
 }
@@ -115,6 +133,8 @@ class ModuleUpdate {
   final bool? locked;
   final String? lockMessage;
   final String? description;
+  final String? moduleType;
+  final String? assessmentId;
 
   ModuleUpdate({
     this.position,
@@ -122,6 +142,8 @@ class ModuleUpdate {
     this.locked,
     this.lockMessage,
     this.description,
+    this.moduleType,
+    this.assessmentId,
   });
 
   Map<String, dynamic> toUpdateMap() {
@@ -131,6 +153,8 @@ class ModuleUpdate {
       if (locked != null) 'locked': locked,
       if (lockMessage != null) 'lock_message': lockMessage,
       if (description != null) 'description': description,
+      if (moduleType != null) 'module_type': moduleType,
+      if (assessmentId != null) 'assessment_id': assessmentId,
       'updated_at': DateTime.now().toIso8601String(),
     };
   }

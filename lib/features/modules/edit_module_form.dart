@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'modules_model.dart';
 import 'modules_repository.dart';
 import '../../widgets/app_button.dart';
+import '../assessment_v2/assessment_v2_repository.dart';
 
 Future<void> showEditModuleDialog({
   required BuildContext context,
@@ -15,28 +16,25 @@ Future<void> showEditModuleDialog({
     context: context,
     builder: (context) => _EditModuleDialog(
       module: module,
-      ref: ref,
       onUpdated: onUpdated,
     ),
   );
 }
 
-class _EditModuleDialog extends StatefulWidget {
+class _EditModuleDialog extends ConsumerStatefulWidget {
   final Module module;
-  final WidgetRef ref;
   final VoidCallback onUpdated;
 
   const _EditModuleDialog({
     required this.module,
-    required this.ref,
     required this.onUpdated,
   });
 
   @override
-  State<_EditModuleDialog> createState() => _EditModuleDialogState();
+  ConsumerState<_EditModuleDialog> createState() => _EditModuleDialogState();
 }
 
-class _EditModuleDialogState extends State<_EditModuleDialog> {
+class _EditModuleDialogState extends ConsumerState<_EditModuleDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _descriptionController;
   late final TextEditingController _positionController;
@@ -75,8 +73,10 @@ class _EditModuleDialogState extends State<_EditModuleDialog> {
       ),
       child: Container(
         width: 500,
+        constraints: const BoxConstraints(maxHeight: 600),
         padding: const EdgeInsets.all(24),
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -101,6 +101,117 @@ class _EditModuleDialogState extends State<_EditModuleDialog> {
             ),
             const SizedBox(height: 24),
             
+            // Module Type (read-only)
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: widget.module.moduleType == 'assessment'
+                        ? Colors.purple.shade50
+                        : Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: widget.module.moduleType == 'assessment'
+                          ? Colors.purple.shade200
+                          : Colors.blue.shade200,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        widget.module.moduleType == 'assessment'
+                            ? Icons.quiz
+                            : Icons.menu_book,
+                        size: 16,
+                        color: widget.module.moduleType == 'assessment'
+                            ? Colors.purple.shade600
+                            : Colors.blue.shade600,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        widget.module.moduleType == 'assessment'
+                            ? 'Assessment Module'
+                            : 'Lesson Module',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: widget.module.moduleType == 'assessment'
+                              ? Colors.purple.shade700
+                              : Colors.blue.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Linked assessment info (assessment modules only)
+            if (widget.module.moduleType == 'assessment') ...[
+              Builder(
+                builder: (context) {
+                  final assessmentAsync = ref.watch(
+                    assessmentByCourseIdProvider(widget.module.courseId),
+                  );
+                  return assessmentAsync.when(
+                    data: (assessment) {
+                      if (assessment == null) {
+                        return const SizedBox.shrink();
+                      }
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle, color: Colors.green.shade600, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Linked Assessment',
+                                    style: TextStyle(
+                                      color: Colors.green.shade700,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    assessment.title,
+                                    style: TextStyle(
+                                      color: Colors.green.shade800,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    loading: () => const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    error: (e, _) => const SizedBox.shrink(),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // Form
             Form(
               key: _formKey,
@@ -193,51 +304,53 @@ class _EditModuleDialogState extends State<_EditModuleDialog> {
                     },
                   ),
                   const SizedBox(height: 20),
-                  
-                  // Duration
-                  const Text(
-                    'Duration (in minutes)',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _durationController,
-                    decoration: InputDecoration(
-                      hintText: '00 minutes',
-                      hintStyle: TextStyle(color: Colors.grey.shade400),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+
+                  // Duration (lesson modules only)
+                  if (widget.module.moduleType == 'lesson') ...[
+                    const Text(
+                      'Duration (in minutes)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black,
                       ),
                     ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value != null && value.trim().isNotEmpty) {
-                        final duration = int.tryParse(value.trim());
-                        if (duration == null || duration < 0) {
-                          return 'Duration must be a positive number';
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _durationController,
+                      decoration: InputDecoration(
+                        hintText: '00 minutes',
+                        hintStyle: TextStyle(color: Colors.grey.shade400),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Color(0xFFE85D04)),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value != null && value.trim().isNotEmpty) {
+                          final duration = int.tryParse(value.trim());
+                          if (duration == null || duration < 0) {
+                            return 'Duration must be a positive number';
+                          }
                         }
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                   
                   // Lock checkbox
                   Row(
@@ -288,6 +401,7 @@ class _EditModuleDialogState extends State<_EditModuleDialog> {
             ),
           ],
         ),
+        ),
       ),
     );
   }
@@ -312,7 +426,7 @@ class _EditModuleDialogState extends State<_EditModuleDialog> {
     );
 
     try {
-      await widget.ref.read(updateModuleProvider.notifier).update(widget.module.id, update);
+      await ref.read(updateModuleProvider.notifier).update(widget.module.id, update);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

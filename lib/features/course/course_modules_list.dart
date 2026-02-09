@@ -8,6 +8,7 @@ import '../modules/delete_module_dialog.dart';
 
 import '../../features/lesson_v2/lesson_v2_models.dart';
 import '../../features/lesson_v2/lesson_v2_repository.dart';
+import '../../features/assessment_v2/assessment_v2_repository.dart';
 
 class CourseModulesList extends ConsumerWidget {
   final String courseId;
@@ -118,7 +119,43 @@ class _ModuleWithLessonsDropdownState
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        if (lessonCount != null) ...[
+                        // Module type badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: module.moduleType == 'assessment'
+                                ? Colors.purple.shade50
+                                : Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                module.moduleType == 'assessment'
+                                    ? Icons.quiz
+                                    : Icons.menu_book,
+                                size: 12,
+                                color: module.moduleType == 'assessment'
+                                    ? Colors.purple.shade600
+                                    : Colors.blue.shade600,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                module.moduleType == 'assessment' ? 'Assessment' : 'Lessons',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: module.moduleType == 'assessment'
+                                      ? Colors.purple.shade600
+                                      : Colors.blue.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (module.moduleType == 'lesson' && lessonCount != null) ...[
+                          const SizedBox(width: 12),
                           Icon(Icons.circle, size: 12, color: AppColors.grey),
                           const SizedBox(width: 6),
                           Text(
@@ -266,10 +303,95 @@ class _ModuleWithLessonsDropdownState
           if (_expanded) ...[
             const SizedBox(height: 16),
             const SizedBox(height: 8),
-            LessonsDropdown(moduleId: module.id),
+            if (module.moduleType == 'assessment')
+              _AssessmentModuleContent(courseId: module.courseId)
+            else
+              LessonsDropdown(moduleId: module.id),
           ],
         ],
       ),
+    );
+  }
+}
+
+class _AssessmentModuleContent extends ConsumerWidget {
+  final String courseId;
+  const _AssessmentModuleContent({required this.courseId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final assessmentAsync = ref.watch(assessmentByCourseIdProvider(courseId));
+    return assessmentAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(8.0),
+        child: LinearProgressIndicator(),
+      ),
+      error: (e, _) => Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Text('Failed to load assessment: $e'),
+      ),
+      data: (assessment) {
+        if (assessment == null) {
+          return const Text('No assessment linked to this module');
+        }
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.purple.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.purple.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.quiz, color: Colors.purple.shade600, size: 24),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      assessment.title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.purple.shade800,
+                      ),
+                    ),
+                    if (assessment.description != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        assessment.description!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.purple.shade600,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: assessment.isActive ? Colors.green.shade50 : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  assessment.isActive ? 'Active' : 'Inactive',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: assessment.isActive ? Colors.green.shade700 : Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

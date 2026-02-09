@@ -69,8 +69,10 @@ class CreateModuleController extends StateNotifier<AsyncValue<Module?>> {
           'position': created.position,
           'duration_minutes': created.durationMinutes,
           'locked': created.locked,
+          'module_type': created.moduleType,
           if (created.lockMessage != null) 'lock_message': created.lockMessage,
           if (created.description != null) 'description': created.description,
+          if (created.assessmentId != null) 'assessment_id': created.assessmentId,
         },
       );
       state = AsyncData(created);
@@ -108,7 +110,15 @@ class UpdateModuleController extends StateNotifier<AsyncValue<void>> {
         changes['position_old'] = oldModule?.position;
         changes['position_new'] = data.position;
       }
-      
+      if (data.moduleType != null && data.moduleType != oldModule?.moduleType) {
+        changes['module_type_old'] = oldModule?.moduleType;
+        changes['module_type_new'] = data.moduleType;
+      }
+      if (data.assessmentId != null && data.assessmentId != oldModule?.assessmentId) {
+        changes['assessment_id_old'] = oldModule?.assessmentId;
+        changes['assessment_id_new'] = data.assessmentId;
+      }
+
       await _repo.updateModule(id, data);
       
       // Log module updated with old and new values

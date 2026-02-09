@@ -184,7 +184,9 @@ class _DeleteModuleDialogState extends State<_DeleteModuleDialog> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'All lessons in this module will also be permanently deleted.',
+                          widget.module.moduleType == 'assessment'
+                              ? 'The assessment link will be removed. The assessment itself will not be deleted.'
+                              : 'All lessons in this module will also be permanently deleted.',
                           style: TextStyle(
                             color: Colors.red.shade600,
                             fontSize: 13,
@@ -238,6 +240,8 @@ class _DeleteModuleDialogState extends State<_DeleteModuleDialog> {
           'description': widget.module.description,
           'position': widget.module.position,
           'course_id': widget.module.courseId,
+          'module_type': widget.module.moduleType,
+          if (widget.module.assessmentId != null) 'assessment_id': widget.module.assessmentId,
         },
       );
       

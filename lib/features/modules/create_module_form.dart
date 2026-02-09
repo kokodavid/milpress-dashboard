@@ -6,6 +6,7 @@ import '../../widgets/app_text_form_field.dart';
 import '../../widgets/app_button.dart';
 import 'modules_model.dart';
 import 'modules_repository.dart';
+import '../assessment_v2/assessment_v2_repository.dart';
 
 class CreateModuleForm extends ConsumerStatefulWidget {
   final String courseId;
@@ -32,6 +33,7 @@ class _CreateModuleFormState extends ConsumerState<CreateModuleForm> {
   bool _locked = false;
   bool _isLoading = false;
   String? _error;
+  String _moduleType = 'lesson';
 
   @override
   void initState() {
@@ -69,15 +71,31 @@ class _CreateModuleFormState extends ConsumerState<CreateModuleForm> {
     });
 
     try {
+      // For assessment modules, look up the course assessment
+      String? assessmentId;
+      if (_moduleType == 'assessment') {
+        final assessment = await ref.read(assessmentByCourseIdProvider(widget.courseId).future);
+        if (assessment == null) {
+          setState(() {
+            _error = 'No assessment found for this course. Create one first.';
+            _isLoading = false;
+          });
+          return;
+        }
+        assessmentId = assessment.id;
+      }
+
       // Use notifier so activity logging runs
       await ref.read(createModuleProvider.notifier).create(
         ModuleCreate(
           courseId: widget.courseId,
           position: position,
-          durationMinutes: duration,
+          durationMinutes: _moduleType == 'lesson' ? duration : null,
           locked: _locked,
           lockMessage: _locked && lockMessageText.isNotEmpty ? lockMessageText : null,
           description: descriptionText.isNotEmpty ? descriptionText : null,
+          moduleType: _moduleType,
+          assessmentId: assessmentId,
         ),
       );
 
@@ -106,7 +124,7 @@ class _CreateModuleFormState extends ConsumerState<CreateModuleForm> {
       ),
       child: Container(
         width: 600,
-        constraints: const BoxConstraints(maxHeight: 400),
+        constraints: const BoxConstraints(maxHeight: 550),
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -158,6 +176,169 @@ class _CreateModuleFormState extends ConsumerState<CreateModuleForm> {
                           ),
                         ),
 
+                      // Module Type Toggle
+                      const Text(
+                        'Module Type',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _moduleType = 'lesson'),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: _moduleType == 'lesson' ? AppColors.primaryColor : Colors.white,
+                                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(8)),
+                                  border: Border.all(
+                                    color: _moduleType == 'lesson' ? AppColors.primaryColor : Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.menu_book,
+                                      size: 18,
+                                      color: _moduleType == 'lesson' ? Colors.white : Colors.grey.shade600,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Lesson Module',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: _moduleType == 'lesson' ? Colors.white : Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _moduleType = 'assessment'),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: _moduleType == 'assessment' ? AppColors.primaryColor : Colors.white,
+                                  borderRadius: const BorderRadius.horizontal(right: Radius.circular(8)),
+                                  border: Border.all(
+                                    color: _moduleType == 'assessment' ? AppColors.primaryColor : Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.quiz,
+                                      size: 18,
+                                      color: _moduleType == 'assessment' ? Colors.white : Colors.grey.shade600,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Assessment Module',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: _moduleType == 'assessment' ? Colors.white : Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Assessment info (shown only for assessment modules)
+                      if (_moduleType == 'assessment') ...[
+                        Builder(
+                          builder: (context) {
+                            final assessmentAsync = ref.watch(assessmentByCourseIdProvider(widget.courseId));
+                            return assessmentAsync.when(
+                              data: (assessment) {
+                                if (assessment == null) {
+                                  return Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.shade50,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.orange.shade200),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.warning_amber_rounded, color: Colors.orange.shade600, size: 20),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'No assessment found for this course. Create one first.',
+                                            style: TextStyle(color: Colors.orange.shade700, fontSize: 13),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                return Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.green.shade200),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.check_circle, color: Colors.green.shade600, size: 20),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Linked Assessment',
+                                              style: TextStyle(
+                                                color: Colors.green.shade700,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              assessment.title,
+                                              style: TextStyle(
+                                                color: Colors.green.shade800,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                              loading: () => const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              ),
+                              error: (e, _) => Text('Error loading assessment: $e'),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
                       // Module Title
                       AppTextFormField(
                         controller: _descriptionController,
@@ -189,25 +370,27 @@ class _CreateModuleFormState extends ConsumerState<CreateModuleForm> {
                               },
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: AppTextFormField(
-                              controller: _durationController,
-                              label: 'Duration (minutes)',
-                              hintText: '00 minutes',
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
+                          if (_moduleType == 'lesson') ...[
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: AppTextFormField(
+                                controller: _durationController,
+                                label: 'Duration (minutes)',
+                                hintText: '00 minutes',
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return null;
+                                  }
+                                  final parsed = int.tryParse(value);
+                                  if (parsed == null || parsed < 1) {
+                                    return 'Enter a valid duration (>=1)';
+                                  }
                                   return null;
-                                }
-                                final parsed = int.tryParse(value);
-                                if (parsed == null || parsed < 1) {
-                                  return 'Enter a valid duration (>=1)';
-                                }
-                                return null;
-                              },
+                                },
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 20),

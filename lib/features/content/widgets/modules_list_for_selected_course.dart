@@ -6,6 +6,7 @@ import '../../modules/modules_repository.dart';
 import '../../modules/create_module_form.dart';
 import '../../lesson_v2/lesson_v2_repository.dart';
 import '../../lesson_v2/lesson_v2_models.dart';
+import '../../assessment_v2/assessment_v2_repository.dart';
 import '../state/lessons_list_controller.dart';
 import '../../../widgets/app_button.dart';
 
@@ -112,8 +113,10 @@ class _ModuleCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lessonsAsync = ref.watch(lessonsForModuleProvider(module.id));
-    
+    final isAssessment = module.moduleType == 'assessment';
+    final lessonsAsync = isAssessment ? null : ref.watch(lessonsForModuleProvider(module.id));
+    final assessmentAsync = isAssessment ? ref.watch(assessmentByCourseIdProvider(module.courseId)) : null;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -127,106 +130,187 @@ class _ModuleCard extends ConsumerWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: AppColors.copBlue,
+              color: isAssessment ? Colors.purple.shade400 : AppColors.copBlue,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Center(
-              child: Text(
-                '${module.position}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: isAssessment
+                  ? const Icon(Icons.quiz, size: 18, color: Colors.white)
+                  : Text(
+                      '${module.position}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
           title: Text('Module ${module.position}'),
-          subtitle: lessonsAsync.when(
-            data: (lessons) {
-              final lessonCount = lessons.length;
-              final lockedText = module.locked ? ' • 🔒 Locked' : '';
-              if (lessons.isEmpty) {
-                return Text('No lessons$lockedText');
-              }
-              final firstLesson = lessons.first.title;
-              final lastLesson = lessons.last.title;
-              final lessonRange = lessonCount == 1 
-                  ? firstLesson 
-                  : '$firstLesson - $lastLesson';
-              return Text('$lessonRange$lockedText');
-            },
-            loading: () => const Text('Loading...'),
-            error: (_, __) => const Text('Error loading lessons'),
-          ),
+          subtitle: isAssessment
+              ? assessmentAsync!.when(
+                  data: (assessment) {
+                    final lockedText = module.locked ? ' • 🔒 Locked' : '';
+                    if (assessment == null) {
+                      return Text('Assessment (not linked)$lockedText');
+                    }
+                    return Text('${assessment.title}$lockedText');
+                  },
+                  loading: () => const Text('Loading...'),
+                  error: (_, __) => const Text('Error loading assessment'),
+                )
+              : lessonsAsync!.when(
+                  data: (lessons) {
+                    final lessonCount = lessons.length;
+                    final lockedText = module.locked ? ' • 🔒 Locked' : '';
+                    if (lessons.isEmpty) {
+                      return Text('No lessons$lockedText');
+                    }
+                    final firstLesson = lessons.first.title;
+                    final lastLesson = lessons.last.title;
+                    final lessonRange = lessonCount == 1
+                        ? firstLesson
+                        : '$firstLesson - $lastLesson';
+                    return Text('$lessonRange$lockedText');
+                  },
+                  loading: () => const Text('Loading...'),
+                  error: (_, __) => const Text('Error loading lessons'),
+                ),
           initiallyExpanded: isExpanded,
           onExpansionChanged: onExpansionChanged,
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
-            lessonsAsync.when(
-              data: (lessons) {
-                final nextPosition =
-                    lessons.isEmpty ? 1 : (lessons.last.displayOrder + 1);
-                return Column(
-                  children: [
-                    if (lessons.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Text('No lessons in this module'),
-                      )
-                    else
-                      ...lessons.map((lesson) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _LessonCard(lesson: lesson),
-                      )),
-                    const SizedBox(height: 8),
-                    // Add Lesson button
-                    SizedBox(
-                      width: double.infinity,
-                      child: CustomPaint(
-                        painter: DashedBorderPainter(color: AppColors.copBlue),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(4),
-                            onTap: () async {
-                              final created = await showDialog<bool>(
-                                context: context,
-                                builder: (ctx) => _AddLessonDialog(
-                                  moduleId: module.id,
-                                  initialPosition: nextPosition,
+            if (isAssessment)
+              assessmentAsync!.when(
+                data: (assessment) {
+                  if (assessment == null) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Text('No assessment linked to this module'),
+                    );
+                  }
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.purple.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          assessment.title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.purple.shade800,
+                          ),
+                        ),
+                        if (assessment.description != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            assessment.description!,
+                            style: TextStyle(fontSize: 13, color: Colors.purple.shade600),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: assessment.isActive ? Colors.green.shade50 : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            assessment.isActive ? 'Active' : 'Inactive',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: assessment.isActive ? Colors.green.shade700 : Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, st) => Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text('Error: $e'),
+                ),
+              )
+            else
+              lessonsAsync!.when(
+                data: (lessons) {
+                  final nextPosition =
+                      lessons.isEmpty ? 1 : (lessons.last.displayOrder + 1);
+                  return Column(
+                    children: [
+                      if (lessons.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Text('No lessons in this module'),
+                        )
+                      else
+                        ...lessons.map((lesson) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _LessonCard(lesson: lesson),
+                        )),
+                      const SizedBox(height: 8),
+                      // Add Lesson button
+                      SizedBox(
+                        width: double.infinity,
+                        child: CustomPaint(
+                          painter: DashedBorderPainter(color: AppColors.copBlue),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(4),
+                              onTap: () async {
+                                final created = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => _AddLessonDialog(
+                                    moduleId: module.id,
+                                    initialPosition: nextPosition,
+                                  ),
+                                );
+                                if (created == true) {
+                                  ref.invalidate(lessonsForModuleProvider(module.id));
+                                }
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add, size: 16, color: AppColors.copBlue),
+                                    const SizedBox(width: 8),
+                                    Text('Add Lesson', style: TextStyle(color: AppColors.copBlue)),
+                                  ],
                                 ),
-                              );
-                              if (created == true) {
-                                ref.invalidate(lessonsForModuleProvider(module.id));
-                              }
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add, size: 16, color: AppColors.copBlue),
-                                  const SizedBox(width: 8),
-                                  Text('Add Lesson', style: TextStyle(color: AppColors.copBlue)),
-                                ],
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                );
-              },
-              loading: () => const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator()),
+                    ],
+                  );
+                },
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, st) => Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text('Error: $e'),
+                ),
               ),
-              error: (e, st) => Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('Error: $e'),
-              ),
-            ),
           ],
         ),
       ),

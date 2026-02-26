@@ -6,6 +6,7 @@ import 'package:milpress_dashboard/widgets/app_text_form_field.dart';
 
 import 'assessment_v2_repository.dart';
 import 'models/assessment_sublevel_model.dart';
+import 'question_types.dart';
 
 class CreateSublevelForm extends ConsumerStatefulWidget {
   final String levelId;
@@ -139,15 +140,6 @@ class _CreateSublevelFormState extends ConsumerState<CreateSublevelForm> {
       if (correctAnswer.isEmpty) {
         return 'Question $questionNo: correct answer is required';
       }
-      if (!options.contains(correctAnswer)) {
-        return 'Question $questionNo: correct answer must match one option';
-      }
-
-      final mainContent = _nonEmptyTexts(question.mainContentControllers);
-      if (mainContent.isEmpty) {
-        return 'Question $questionNo: add at least one main content item';
-      }
-
       final seenKeys = <String>{};
       for (var j = 0; j < question.customFields.length; j++) {
         final customField = question.customFields[j];
@@ -178,6 +170,7 @@ class _CreateSublevelFormState extends ConsumerState<CreateSublevelForm> {
       }
 
       return <String, dynamic>{
+        'type': question.type,
         'audio_file': question.audioFileController.text.trim(),
         'options': _nonEmptyTexts(question.optionControllers),
         'correct_answer': question.correctAnswerController.text.trim(),
@@ -394,6 +387,9 @@ class _CreateSublevelFormState extends ConsumerState<CreateSublevelForm> {
                         question: question,
                         isLoading: isLoading,
                         onRemove: () => _removeQuestion(index),
+                        onTypeChanged: (value) {
+                          setState(() => question.type = value);
+                        },
                         onAddOption: () => _addOption(question),
                         onRemoveOption: (optionIndex) =>
                             _removeOption(question, optionIndex),
@@ -448,6 +444,7 @@ class _CreateSublevelFormState extends ConsumerState<CreateSublevelForm> {
 }
 
 class _QuestionDraft {
+  String type;
   final TextEditingController audioFileController;
   final List<TextEditingController> optionControllers;
   final TextEditingController correctAnswerController;
@@ -456,6 +453,7 @@ class _QuestionDraft {
   final List<_CustomFieldDraft> customFields;
 
   _QuestionDraft({
+    this.type = assessmentV2DefaultQuestionType,
     TextEditingController? audioFileController,
     List<TextEditingController>? optionControllers,
     TextEditingController? correctAnswerController,
@@ -521,6 +519,7 @@ class _QuestionCard extends StatelessWidget {
   final ValueChanged<int> onRemoveMainContent;
   final VoidCallback onAddCustomField;
   final ValueChanged<int> onRemoveCustomField;
+  final ValueChanged<String> onTypeChanged;
 
   const _QuestionCard({
     required this.index,
@@ -535,6 +534,7 @@ class _QuestionCard extends StatelessWidget {
     required this.onRemoveMainContent,
     required this.onAddCustomField,
     required this.onRemoveCustomField,
+    required this.onTypeChanged,
   });
 
   @override
@@ -567,6 +567,38 @@ class _QuestionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
+          const Text(
+            'Question Type*',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<String>(
+            initialValue: question.type,
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            items: assessmentV2QuestionTypes.entries
+                .map(
+                  (e) => DropdownMenuItem(
+                    value: e.key,
+                    child: Text(e.value, style: const TextStyle(fontSize: 13)),
+                  ),
+                )
+                .toList(),
+            onChanged: isLoading ? null : (v) {
+              if (v != null) onTypeChanged(v);
+            },
+          ),
+          const SizedBox(height: 12),
           AppTextFormField(
             controller: question.audioFileController,
             label: 'Audio File*',
@@ -587,7 +619,7 @@ class _QuestionCard extends StatelessWidget {
           AppTextFormField(
             controller: question.correctAnswerController,
             label: 'Correct Answer*',
-            hintText: 'Must match one option exactly',
+            hintText: 'Enter correct answer',
             enabled: !isLoading,
           ),
           const SizedBox(height: 12),
@@ -602,7 +634,7 @@ class _QuestionCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _DynamicStringListSection(
-            title: 'Main Content*',
+            title: 'Main Content (Optional)',
             controllers: question.mainContentControllers,
             addLabel: 'Add Main Content Item',
             itemLabel: 'Content',

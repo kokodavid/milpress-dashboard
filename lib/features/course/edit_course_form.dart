@@ -28,6 +28,7 @@ class _EditCourseFormState extends ConsumerState<EditCourseForm> {
   late String? type = widget.course.type;
   late int? level = widget.course.level;
   late int? duration = widget.course.durationInMinutes;
+  late String? soundUrlOverview = widget.course.soundUrlOverview;
   late bool locked = widget.course.locked;
   bool isLoading = false;
   String? errorMsg;
@@ -58,6 +59,7 @@ class _EditCourseFormState extends ConsumerState<EditCourseForm> {
             type: type ?? '',
             level: level,
             durationInMinutes: duration,
+            soundUrlOverview: soundUrlOverview,
             locked: locked,
           ),
         );
@@ -250,6 +252,15 @@ class _EditCourseFormState extends ConsumerState<EditCourseForm> {
                   return null;
                 },
                 onSaved: (v) => duration = int.tryParse(v ?? ''),
+              ),
+              const SizedBox(height: 10),
+
+              // Sound URL Overview
+              AppTextFormField(
+                label: 'Sound URL Overview*',
+                initialValue: soundUrlOverview ?? '',
+                validator: (v) => v == null || v.trim().isEmpty ? 'Sound URL overview is required' : null,
+                onSaved: (v) => soundUrlOverview = v?.trim(),
               ),
               const SizedBox(height: 20),
 

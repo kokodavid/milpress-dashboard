@@ -1112,6 +1112,7 @@ class _QuestionDetailsCardState extends State<_QuestionDetailsCard> {
       questionMap['extra_fields'],
     );
     final knownKeys = {
+      'type',
       'audio_file',
       'options',
       'correct_answer',
@@ -1132,6 +1133,16 @@ class _QuestionDetailsCardState extends State<_QuestionDetailsCard> {
     final audioFile = _QuestionDetailsCard._formatValue(
       questionMap['audio_file'],
     );
+
+    const typeLabels = <String, String>{
+      'multiple_choice_image': 'Multiple Choice (Image)',
+      'letter_recognition': 'Letter Recognition',
+      'word_matching': 'Word Matching',
+      'fill_in_blank': 'Fill in the Blank',
+      'true_false': 'True / False',
+    };
+    final rawType = questionMap['type']?.toString() ?? '';
+    final typeLabel = typeLabels[rawType] ?? rawType;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -1173,10 +1184,33 @@ class _QuestionDetailsCardState extends State<_QuestionDetailsCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Question ${widget.index + 1}',
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w600),
+                        Row(
+                          children: [
+                            Text(
+                              'Question ${widget.index + 1}',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            if (typeLabel.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.indigo.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  typeLabel,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.indigo.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -1200,6 +1234,9 @@ class _QuestionDetailsCardState extends State<_QuestionDetailsCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (typeLabel.isNotEmpty)
+                        _FieldLine(label: 'Type', value: typeLabel),
+                      if (typeLabel.isNotEmpty) const SizedBox(height: 8),
                       _FieldLine(label: 'Audio file', value: audioFile),
                       const SizedBox(height: 8),
                       _FieldLine(label: 'Correct answer', value: correctAnswer),

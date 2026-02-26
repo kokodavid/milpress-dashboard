@@ -22,6 +22,7 @@ class _CreateCourseFormState extends ConsumerState<CreateCourseForm> {
   String? type;
   int? level;
   int? duration;
+  String? soundUrlOverview;
   bool locked = false;
   bool isLoading = false;
   String? errorMsg;
@@ -51,6 +52,7 @@ class _CreateCourseFormState extends ConsumerState<CreateCourseForm> {
             type: type ?? '',
             level: level,
             durationInMinutes: duration,
+            soundUrlOverview: soundUrlOverview,
             locked: locked,
           ),
         );
@@ -237,6 +239,15 @@ class _CreateCourseFormState extends ConsumerState<CreateCourseForm> {
                     return null;
                   },
                   onSaved: (v) => duration = int.tryParse(v ?? ''),
+                ),
+                const SizedBox(height: 20),
+
+                // Sound URL Overview
+                AppTextFormField(
+                  label: 'Sound URL Overview*',
+                  hintText: 'Enter sound URL overview',
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Sound URL overview is required' : null,
+                  onSaved: (v) => soundUrlOverview = v?.trim(),
                 ),
                 const SizedBox(height: 20),
 

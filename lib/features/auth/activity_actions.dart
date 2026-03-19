@@ -34,4 +34,10 @@ class ActivityActions {
   static const String assessmentSublevelCreated = 'assessment_sublevel_created';
   static const String assessmentSublevelUpdated = 'assessment_sublevel_updated';
   static const String assessmentSublevelDeleted = 'assessment_sublevel_deleted';
+
+  // App content actions
+  static const String appContentUpdated = 'app_content_updated';
+  static const String appResourceCreated = 'app_resource_created';
+  static const String appResourceUpdated = 'app_resource_updated';
+  static const String appResourceDeleted = 'app_resource_deleted';
 }

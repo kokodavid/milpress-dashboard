@@ -8,6 +8,7 @@ import 'features/content/modules_list_screen.dart';
 import 'features/content/lessons_list_screen.dart';
 import 'features/content/quizzes_list_screen.dart';
 import 'features/assessment_v2/assessment_v2_screen.dart';
+import 'features/content_management/content_management_screen.dart';
 import 'widgets/app_shell.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -51,6 +52,10 @@ final GoRouter appRouter = GoRouter(
 				GoRoute(
 					path: '/assessments',
 					builder: (context, state) => const AssessmentV2Screen(),
+				),
+				GoRoute(
+					path: '/content',
+					builder: (context, state) => const ContentManagementScreen(),
 				),
 			],
 		),

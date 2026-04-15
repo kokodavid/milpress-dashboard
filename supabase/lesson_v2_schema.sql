@@ -8,7 +8,23 @@ exception
 end $$;
 
 do $$ begin
-  create type lesson_step_type_enum as enum ('introduction', 'demonstration', 'practice', 'assessment');
+  create type lesson_step_type_enum as enum (
+    'introduction',
+    'demonstration',
+    'practice',
+    'assessment',
+    'blending',
+    'sound_discrimination',
+    'sound_item_matching',
+    'guided_reading',
+    'practice_game',
+    'sound_presence_check',
+    'missing_letters',
+    'matching_words',
+    'word_reading',
+    'sentence_reading',
+    'mini_story_card'
+  );
 exception
   when duplicate_object then null;
 end $$;

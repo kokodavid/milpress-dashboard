@@ -4,26 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../lesson_v2/lesson_v2_models.dart';
 import '../../../lesson_v2/lesson_v2_repository.dart';
 import 'step_drafts.dart';
-
-const List<String> stepKeyOptions = [
-  'sound',
-  'example',
-  'exercise',
-  'formation',
-];
-
-const List<LessonStepType> forcedStepTypes = [
-  LessonStepType.introduction,
-  LessonStepType.demonstration,
-  LessonStepType.practice,
-  LessonStepType.assessment,
-];
-const List<String> forcedStepTitles = [
-  'Pronounciation',
-  'Letter Formation',
-  'Example Words',
-  'Exercise',
-];
+import 'step_type_form_sections.dart';
+import 'step_type_picker.dart';
 
 Future<bool?> showCreateLessonStepsDialog({
   required BuildContext context,
@@ -79,14 +61,8 @@ class _CreateLessonStepsDialogState
     if (widget.initialSteps.isNotEmpty) {
       _steps.addAll(widget.initialSteps.map(StepDraft.fromStep));
     } else {
-      for (var i = 0; i < 4; i++) {
-        _steps.add(StepDraft(
-          position: i + 1,
-          stepKey: stepKeyOptions.first,
-        ));
-      }
+      _steps.add(StepDraft(position: 1, stepKey: ''));
     }
-    _applyForcedRules();
   }
 
   @override
@@ -101,9 +77,7 @@ class _CreateLessonStepsDialogState
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: 720,
         constraints: const BoxConstraints(maxHeight: 760),
@@ -123,8 +97,9 @@ class _CreateLessonStepsDialogState
                   ),
                 ),
                 IconButton(
-                  onPressed:
-                      _submitting ? null : () => Navigator.of(context).pop(),
+                  onPressed: _submitting
+                      ? null
+                      : () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.close),
                   color: Colors.grey.shade600,
                 ),
@@ -133,10 +108,7 @@ class _CreateLessonStepsDialogState
             const SizedBox(height: 12),
             Row(
               children: [
-                Text(
-                  'Steps',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('Steps', style: Theme.of(context).textTheme.titleMedium),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: _submitting ? null : _addStep,
@@ -196,8 +168,9 @@ class _CreateLessonStepsDialogState
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : const Text(
@@ -215,9 +188,6 @@ class _CreateLessonStepsDialogState
   }
 
   Widget _buildStepCard(StepDraft step, int index) {
-    final isForcedType = index < forcedStepTypes.length;
-    final isForcedKey = index < stepKeyOptions.length;
-    final isForcedTitle = index < forcedStepTitles.length;
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       elevation: 0,
@@ -235,14 +205,15 @@ class _CreateLessonStepsDialogState
               children: [
                 Text(
                   'Step ${index + 1}',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const Spacer(),
                 IconButton(
-                  onPressed:
-                      index == 0 ? null : () => _moveStep(index, index - 1),
+                  onPressed: index == 0
+                      ? null
+                      : () => _moveStep(index, index - 1),
                   icon: const Icon(Icons.arrow_upward, size: 18),
                   tooltip: 'Move up',
                 ),
@@ -264,54 +235,21 @@ class _CreateLessonStepsDialogState
             Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: stepKeyOptions.contains(step.stepKeyCtrl.text)
-                        ? step.stepKeyCtrl.text
-                        : null,
+                  child: TextFormField(
+                    controller: step.stepKeyCtrl,
                     decoration: const InputDecoration(
                       labelText: 'Step Key',
+                      hintText: 'e.g. sound, blend, trace…',
                       border: OutlineInputBorder(),
                     ),
-                    items: stepKeyOptions
-                        .map(
-                          (value) => DropdownMenuItem(
-                            value: value,
-                            child: Text(value),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: isForcedKey
-                        ? null
-                        : (value) {
-                          if (value != null) {
-                            setState(() => step.stepKeyCtrl.text = value);
-                          }
-                        },
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<LessonStepType>(
-                    value: step.stepType,
-                    decoration: const InputDecoration(
-                      labelText: 'Step Type',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: LessonStepType.values
-                        .map(
-                          (type) => DropdownMenuItem(
-                            value: type,
-                            child: Text(type.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: isForcedType
-                        ? null
-                        : (value) {
-                          if (value != null) {
-                            setState(() => step.setStepType(value));
-                          }
-                        },
+                  child: _StepTypeButton(
+                    currentType: step.stepType,
+                    onChanged: (newType) =>
+                        setState(() => step.setStepType(newType)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -320,7 +258,8 @@ class _CreateLessonStepsDialogState
                     const Text('Required'),
                     Switch(
                       value: step.required,
-                      onChanged: (value) => setState(() => step.required = value),
+                      onChanged: (value) =>
+                          setState(() => step.required = value),
                     ),
                   ],
                 ),
@@ -335,411 +274,21 @@ class _CreateLessonStepsDialogState
   }
 
   Widget _buildStepTypeFields(StepDraft step) {
-    switch (step.stepType) {
-      case LessonStepType.introduction:
-        return _buildIntroductionFields(step, lockTitle: _isLockedTitle(step));
-      case LessonStepType.demonstration:
-        return _buildDemonstrationFields(step, lockTitle: _isLockedTitle(step));
-      case LessonStepType.practice:
-        return _buildPracticeFields(step, lockTitle: _isLockedTitle(step));
-      case LessonStepType.assessment:
-        return _buildAssessmentFields(step, lockTitle: _isLockedTitle(step));
-    }
-  }
-
-  bool _isLockedTitle(StepDraft step) =>
-      (step.position - 1) < forcedStepTitles.length;
-
-  Widget _buildIntroductionFields(StepDraft step, {required bool lockTitle}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: step.titleCtrl,
-          enabled: !lockTitle,
-          decoration: const InputDecoration(
-            labelText: 'Title',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.displayTextCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Display Text',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.audioBaseUrlCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Audio Base URL',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: step.audio05Ctrl,
-                decoration: const InputDecoration(
-                  labelText: 'Audio 0.5x URL',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextFormField(
-                controller: step.audio1Ctrl,
-                decoration: const InputDecoration(
-                  labelText: 'Audio 1x URL',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextFormField(
-                controller: step.audio15Ctrl,
-                decoration: const InputDecoration(
-                  labelText: 'Audio 1.5x URL',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.howToSvgUrlCtrl,
-          decoration: const InputDecoration(
-            labelText: 'How-to SVG URL',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.practiceTipTextCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Practice Tip Text',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.practiceTipAudioCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Practice Tip Audio URL',
-            border: OutlineInputBorder(),
-          ),
-        ),
-      ],
+    return buildLessonStepTypeFields(
+      context: context,
+      step: step,
+      setState: setState,
     );
   }
 
-  Widget _buildDemonstrationFields(StepDraft step, {required bool lockTitle}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: step.titleCtrl,
-          enabled: !lockTitle,
-          decoration: const InputDecoration(
-            labelText: 'Title',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Image URLs',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 6),
-        for (var i = 0; i < step.imageUrlCtrls.length; i++)
-          _buildUrlRow(
-            controller: step.imageUrlCtrls[i],
-            onRemove: () => setState(() => step.removeImageUrl(i)),
-          ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => setState(step.addImageUrl),
-            icon: const Icon(Icons.add),
-            label: const Text('Add image'),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.feedbackTitleCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Feedback Title',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.feedbackBodyCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Feedback Body',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 2,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPracticeFields(StepDraft step, {required bool lockTitle}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: step.titleCtrl,
-          enabled: !lockTitle,
-          decoration: const InputDecoration(
-            labelText: 'Title',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Items',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 6),
-        for (var i = 0; i < step.practiceItems.length; i++)
-          _buildPracticeItemRow(
-            item: step.practiceItems[i],
-            onRemove: () => setState(() => step.removePracticeItem(i)),
-          ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => setState(step.addPracticeItem),
-            icon: const Icon(Icons.add),
-            label: const Text('Add item'),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.tipTextCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Tip Text',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.tipSoundCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Tip Sound URL',
-            border: OutlineInputBorder(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAssessmentFields(StepDraft step, {required bool lockTitle}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: step.titleCtrl,
-          enabled: !lockTitle,
-          decoration: const InputDecoration(
-            labelText: 'Title',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.promptCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Prompt',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 2,
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.soundInstructionCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Sound Instruction URL',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Options',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 6),
-        for (var i = 0; i < step.assessmentOptions.length; i++)
-          _buildAssessmentOptionRow(
-            option: step.assessmentOptions[i],
-            onRemove: () => setState(() => step.removeAssessmentOption(i)),
-          ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => setState(step.addAssessmentOption),
-            icon: const Icon(Icons.add),
-            label: const Text('Add option'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUrlRow({
-    required TextEditingController controller,
-    required VoidCallback onRemove,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextFormField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Image URL',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: onRemove,
-            icon: const Icon(Icons.close),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPracticeItemRow({
-    required PracticeItemDraft item,
-    required VoidCallback onRemove,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: item.labelCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Label',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextFormField(
-                  controller: item.imageUrlCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Image URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: item.soundUrlCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Sound URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: onRemove,
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAssessmentOptionRow({
-    required AssessmentOptionDraft option,
-    required VoidCallback onRemove,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: option.labelCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Label',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextFormField(
-                  controller: option.imageUrlCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Image URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Row(
-                children: [
-                  Checkbox(
-                    value: option.isCorrect,
-                    onChanged: (value) =>
-                        setState(() => option.isCorrect = value ?? false),
-                  ),
-                  const Text('Correct'),
-                ],
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: onRemove,
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _addStep() {
+  Future<void> _addStep() async {
+    final type = await showStepTypePicker(context: context);
+    if (type == null) return;
+    if (!mounted) return;
     setState(() {
-      _steps.add(StepDraft(
-        position: _steps.length + 1,
-        stepKey: stepKeyOptions.first,
-      ));
-      _applyForcedRules();
+      final draft = StepDraft(position: _steps.length + 1, stepKey: '');
+      draft.setStepType(type);
+      _steps.add(draft);
     });
   }
 
@@ -748,7 +297,6 @@ class _CreateLessonStepsDialogState
       _steps[index].dispose();
       _steps.removeAt(index);
       _reindexSteps();
-      _applyForcedRules();
     });
   }
 
@@ -757,7 +305,6 @@ class _CreateLessonStepsDialogState
       final step = _steps.removeAt(from);
       _steps.insert(to, step);
       _reindexSteps();
-      _applyForcedRules();
     });
   }
 
@@ -767,46 +314,14 @@ class _CreateLessonStepsDialogState
     }
   }
 
-  void _applyForcedRules() {
-    for (var i = 0; i < _steps.length && i < forcedStepTypes.length; i++) {
-      _steps[i].stepType = forcedStepTypes[i];
-      _steps[i].stepKeyCtrl.text = stepKeyOptions[i];
-      if (i < forcedStepTitles.length) {
-        _steps[i].titleCtrl.text = forcedStepTitles[i];
-      }
-    }
-  }
-
   String? _validateSteps() {
     if (_steps.isEmpty) {
       return 'Add at least one step';
     }
     for (final step in _steps) {
-      if (step.stepKeyCtrl.text.trim().isEmpty) {
-        return 'Every step needs a step key';
-      }
-      if (step.titleCtrl.text.trim().isEmpty) {
-        return 'Every step needs a title';
-      }
-      if (step.stepType == LessonStepType.practice &&
-          step.practiceItems.isEmpty) {
-        return 'Practice steps need at least one item';
-      }
-      if (step.stepType == LessonStepType.assessment &&
-          step.assessmentOptions.isEmpty) {
-        return 'Assessment steps need at least one option';
-      }
-      if (step.stepType == LessonStepType.assessment &&
-          step.assessmentOptions.every((o) => !o.isCorrect)) {
-        return 'Assessment steps need at least one correct option';
-      }
-      if (step.stepType == LessonStepType.introduction &&
-          step.displayTextCtrl.text.trim().isEmpty) {
-        return 'Introduction steps need display text';
-      }
-      if (step.stepType == LessonStepType.assessment &&
-          step.promptCtrl.text.trim().isEmpty) {
-        return 'Assessment steps need a prompt';
+      final error = validateLessonStepDraft(step);
+      if (error != null) {
+        return error;
       }
     }
     return null;
@@ -815,9 +330,9 @@ class _CreateLessonStepsDialogState
   Future<void> _saveSteps() async {
     final error = _validateSteps();
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
       return;
     }
     setState(() => _submitting = true);
@@ -831,9 +346,9 @@ class _CreateLessonStepsDialogState
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save steps: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save steps: $e')));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -857,7 +372,6 @@ class _EditLessonStepDialogState extends State<EditLessonStepDialog> {
   void initState() {
     super.initState();
     _draft = StepDraft.fromStep(widget.step);
-    _applyForcedRules();
   }
 
   @override
@@ -870,9 +384,7 @@ class _EditLessonStepDialogState extends State<EditLessonStepDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: 720,
         constraints: const BoxConstraints(maxHeight: 760),
@@ -892,8 +404,9 @@ class _EditLessonStepDialogState extends State<EditLessonStepDialog> {
                   ),
                 ),
                 IconButton(
-                  onPressed:
-                      _submitting ? null : () => Navigator.of(context).pop(),
+                  onPressed: _submitting
+                      ? null
+                      : () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.close),
                   color: Colors.grey.shade600,
                 ),
@@ -908,55 +421,21 @@ class _EditLessonStepDialogState extends State<EditLessonStepDialog> {
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: stepKeyOptions.contains(_draft.stepKeyCtrl.text)
-                                ? _draft.stepKeyCtrl.text
-                                : null,
+                          child: TextFormField(
+                            controller: _draft.stepKeyCtrl,
                             decoration: const InputDecoration(
                               labelText: 'Step Key',
+                              hintText: 'e.g. sound, blend, trace…',
                               border: OutlineInputBorder(),
                             ),
-                            items: stepKeyOptions
-                                .map(
-                                  (value) => DropdownMenuItem(
-                                    value: value,
-                                    child: Text(value),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: _isForcedKey()
-                                ? null
-                                : (value) {
-                                    if (value != null) {
-                                      setState(
-                                          () => _draft.stepKeyCtrl.text = value);
-                                    }
-                                  },
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: DropdownButtonFormField<LessonStepType>(
-                            value: _draft.stepType,
-                            decoration: const InputDecoration(
-                              labelText: 'Step Type',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: LessonStepType.values
-                                .map(
-                                  (type) => DropdownMenuItem(
-                                    value: type,
-                                    child: Text(type.name),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: _isForcedType()
-                                ? null
-                                : (value) {
-                                    if (value != null) {
-                                      setState(() => _draft.setStepType(value));
-                                    }
-                                  },
+                          child: _StepTypeButton(
+                            currentType: _draft.stepType,
+                            onChanged: (newType) =>
+                                setState(() => _draft.setStepType(newType)),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -1016,8 +495,9 @@ class _EditLessonStepDialogState extends State<EditLessonStepDialog> {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : const Text(
@@ -1035,394 +515,10 @@ class _EditLessonStepDialogState extends State<EditLessonStepDialog> {
   }
 
   Widget _buildStepTypeFields(StepDraft step) {
-    switch (step.stepType) {
-      case LessonStepType.introduction:
-        return _buildIntroductionFields(step);
-      case LessonStepType.demonstration:
-        return _buildDemonstrationFields(step);
-      case LessonStepType.practice:
-        return _buildPracticeFields(step);
-      case LessonStepType.assessment:
-        return _buildAssessmentFields(step);
-    }
-  }
-
-  Widget _buildIntroductionFields(StepDraft step) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: step.titleCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Title',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.displayTextCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Display Text',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.audioBaseUrlCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Audio Base URL',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: step.audio05Ctrl,
-                decoration: const InputDecoration(
-                  labelText: 'Audio 0.5x URL',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextFormField(
-                controller: step.audio1Ctrl,
-                decoration: const InputDecoration(
-                  labelText: 'Audio 1x URL',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextFormField(
-                controller: step.audio15Ctrl,
-                decoration: const InputDecoration(
-                  labelText: 'Audio 1.5x URL',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.howToSvgUrlCtrl,
-          decoration: const InputDecoration(
-            labelText: 'How-to SVG URL',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.practiceTipTextCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Practice Tip Text',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.practiceTipAudioCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Practice Tip Audio URL',
-            border: OutlineInputBorder(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDemonstrationFields(StepDraft step) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: step.titleCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Title',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Image URLs',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 6),
-        for (var i = 0; i < step.imageUrlCtrls.length; i++)
-          _buildUrlRow(
-            controller: step.imageUrlCtrls[i],
-            onRemove: () => setState(() => step.removeImageUrl(i)),
-          ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => setState(step.addImageUrl),
-            icon: const Icon(Icons.add),
-            label: const Text('Add image'),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.feedbackTitleCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Feedback Title',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.feedbackBodyCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Feedback Body',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 2,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPracticeFields(StepDraft step) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: step.titleCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Title',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Items',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 6),
-        for (var i = 0; i < step.practiceItems.length; i++)
-          _buildPracticeItemRow(
-            item: step.practiceItems[i],
-            onRemove: () => setState(() => step.removePracticeItem(i)),
-          ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => setState(step.addPracticeItem),
-            icon: const Icon(Icons.add),
-            label: const Text('Add item'),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.tipTextCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Tip Text',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.tipSoundCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Tip Sound URL',
-            border: OutlineInputBorder(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAssessmentFields(StepDraft step) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: step.titleCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Title',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.promptCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Prompt',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 2,
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: step.soundInstructionCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Sound Instruction URL',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Options',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 6),
-        for (var i = 0; i < step.assessmentOptions.length; i++)
-          _buildAssessmentOptionRow(
-            option: step.assessmentOptions[i],
-            onRemove: () => setState(() => step.removeAssessmentOption(i)),
-          ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => setState(step.addAssessmentOption),
-            icon: const Icon(Icons.add),
-            label: const Text('Add option'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUrlRow({
-    required TextEditingController controller,
-    required VoidCallback onRemove,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextFormField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Image URL',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            onPressed: onRemove,
-            icon: const Icon(Icons.close),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPracticeItemRow({
-    required PracticeItemDraft item,
-    required VoidCallback onRemove,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: item.labelCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Label',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextFormField(
-                  controller: item.imageUrlCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Image URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: item.soundUrlCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Sound URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: onRemove,
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAssessmentOptionRow({
-    required AssessmentOptionDraft option,
-    required VoidCallback onRemove,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: option.labelCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Label',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextFormField(
-                  controller: option.imageUrlCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Image URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Row(
-                children: [
-                  Checkbox(
-                    value: option.isCorrect,
-                    onChanged: (value) =>
-                        setState(() => option.isCorrect = value ?? false),
-                  ),
-                  const Text('Correct'),
-                ],
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: onRemove,
-                icon: const Icon(Icons.close),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return buildLessonStepTypeFields(
+      context: context,
+      step: step,
+      setState: setState,
     );
   }
 
@@ -1435,20 +531,88 @@ class _EditLessonStepDialogState extends State<EditLessonStepDialog> {
       if (mounted) setState(() => _submitting = false);
     }
   }
+}
 
-  void _applyForcedRules() {
-    final index = _draft.position - 1;
-    if (index < 0 || index >= forcedStepTypes.length) return;
-    _draft.stepType = forcedStepTypes[index];
-    _draft.stepKeyCtrl.text = stepKeyOptions[index];
-    if (index < forcedStepTitles.length) {
-      _draft.titleCtrl.text = forcedStepTitles[index];
-    }
+// ── Shared step-type selector button ─────────────────────────────────────────
+
+/// Replaces the raw [DropdownButtonFormField] for step type selection.
+/// Shows the current type with its icon and a "Change" badge. Tapping opens
+/// the [StepTypePickerDialog] so the user can preview types before choosing.
+class _StepTypeButton extends StatelessWidget {
+  const _StepTypeButton({
+    required this.currentType,
+    required this.onChanged,
+  });
+
+  final LessonStepType currentType;
+  final ValueChanged<LessonStepType> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () async {
+        final picked = await showStepTypePicker(
+          context: context,
+          initialType: currentType,
+        );
+        if (picked != null) onChanged(picked);
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade400),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              currentType.icon,
+              size: 18,
+              color: const Color(0xFFE85D04),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Step Type',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                  Text(
+                    currentType.displayName,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: const Text(
+                'Change',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Color(0xFFE85D04),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-
-  bool _isForcedType() => (_draft.position - 1) < forcedStepTypes.length;
-
-  bool _isForcedKey() => (_draft.position - 1) < stepKeyOptions.length;
-
-  bool _isLockedTitle(StepDraft step) => (step.position - 1) < forcedStepTitles.length;
 }

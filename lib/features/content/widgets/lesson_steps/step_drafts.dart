@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import '../../../lesson_v2/lesson_v2_models.dart';
+import '../../../lesson_v2/step_type_definition.dart';
 
 class StepDraft {
   StepDraft({required this.position, required String stepKey})
@@ -636,6 +639,12 @@ class StepDraft {
 
   int position;
   LessonStepType stepType;
+
+  /// Set when this step uses an admin-created custom type. When non-null,
+  /// the step form shows a generic JSON config editor instead of the
+  /// specialised form, and [toInput] writes this type's key to the DB.
+  StepTypeDefinition? customStepType;
+
   bool required = true;
 
   final TextEditingController stepKeyCtrl;
@@ -692,7 +701,12 @@ class StepDraft {
   final TextEditingController miniStoryCardInstructionAudioCtrl;
   final List<MiniStoryCardItemDraft> miniStoryCardItems = [];
 
+  /// JSON config editor for custom step types. Pre-filled with `{}`.
+  final TextEditingController customConfigCtrl =
+      TextEditingController(text: '{}');
+
   void setStepType(LessonStepType type) {
+    customStepType = null;
     stepType = type;
     if (type == LessonStepType.demonstration && imageUrlCtrls.isEmpty) {
       addImageUrl();
@@ -744,6 +758,13 @@ class StepDraft {
     if (type == LessonStepType.miniStoryCard && miniStoryCardItems.isEmpty) {
       addMiniStoryCardItem();
     }
+  }
+
+  /// Sets this step to a custom (admin-created) type. Clears any previously
+  /// selected system type and resets the JSON config to `{}`.
+  void setCustomType(StepTypeDefinition def) {
+    customStepType = def;
+    customConfigCtrl.text = '{}';
   }
 
   void addImageUrl() => imageUrlCtrls.add(TextEditingController());
@@ -884,6 +905,7 @@ class StepDraft {
     return LessonStepInput(
       stepKey: stepKeyCtrl.text.trim(),
       stepType: stepType,
+      customStepTypeKey: customStepType?.key,
       position: position,
       required: required,
       config: _buildConfig(),
@@ -891,6 +913,19 @@ class StepDraft {
   }
 
   Map<String, dynamic> _buildConfig() {
+    if (customStepType != null) {
+      // Try to parse user-entered JSON; fall back to empty map on error.
+      try {
+        final raw = customConfigCtrl.text.trim();
+        if (raw.isNotEmpty) {
+          final decoded = jsonDecode(raw);
+          if (decoded is Map) {
+            return Map<String, dynamic>.from(decoded);
+          }
+        }
+      } catch (_) {}
+      return {};
+    }
     switch (stepType) {
       case LessonStepType.introduction:
         final speedVariants = <String, String>{};
@@ -1185,6 +1220,7 @@ class StepDraft {
     for (final item in miniStoryCardItems) {
       item.dispose();
     }
+    customConfigCtrl.dispose();
   }
 }
 

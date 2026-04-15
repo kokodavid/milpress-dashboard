@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../utils/app_colors.dart';
+import '../../../widgets/app_button.dart';
 import '../app_content_model.dart';
 import '../content_management_providers.dart';
 import '../content_management_repository.dart';
@@ -104,20 +106,10 @@ class _VideoFieldsSectionState extends ConsumerState<VideoFieldsSection> {
                 helperText: 'MP4 — "Need help?" button on Home screen',
               ),
               const SizedBox(height: 20),
-              SizedBox(
-                width: 140,
-                child: FilledButton(
-                  onPressed:
-                      saveState is AsyncLoading ? null : _save,
-                  child: saveState is AsyncLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text('Save Videos'),
-                ),
+              AppButton(
+                label: 'Save Videos',
+                backgroundColor: AppColors.primaryColor,
+                onPressed: saveState is AsyncLoading ? null : _save,
               ),
             ],
           ),

@@ -247,9 +247,15 @@ class _CreateLessonStepsDialogState
                 const SizedBox(width: 12),
                 Expanded(
                   child: _StepTypeButton(
-                    currentType: step.stepType,
-                    onChanged: (newType) =>
-                        setState(() => step.setStepType(newType)),
+                    draft: step,
+                    onChanged: (picked) => setState(() {
+                      switch (picked) {
+                        case SystemPickedType(:final type):
+                          step.setStepType(type);
+                        case CustomPickedType(:final def):
+                          step.setCustomType(def);
+                      }
+                    }),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -282,12 +288,17 @@ class _CreateLessonStepsDialogState
   }
 
   Future<void> _addStep() async {
-    final type = await showStepTypePicker(context: context);
-    if (type == null) return;
+    final picked = await showStepTypePicker(context: context);
+    if (picked == null) return;
     if (!mounted) return;
     setState(() {
       final draft = StepDraft(position: _steps.length + 1, stepKey: '');
-      draft.setStepType(type);
+      switch (picked) {
+        case SystemPickedType(:final type):
+          draft.setStepType(type);
+        case CustomPickedType(:final def):
+          draft.setCustomType(def);
+      }
       _steps.add(draft);
     });
   }
@@ -433,9 +444,15 @@ class _EditLessonStepDialogState extends State<EditLessonStepDialog> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: _StepTypeButton(
-                            currentType: _draft.stepType,
-                            onChanged: (newType) =>
-                                setState(() => _draft.setStepType(newType)),
+                            draft: _draft,
+                            onChanged: (picked) => setState(() {
+                              switch (picked) {
+                                case SystemPickedType(:final type):
+                                  _draft.setStepType(type);
+                                case CustomPickedType(:final def):
+                                  _draft.setCustomType(def);
+                              }
+                            }),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -536,16 +553,27 @@ class _EditLessonStepDialogState extends State<EditLessonStepDialog> {
 // ── Shared step-type selector button ─────────────────────────────────────────
 
 /// Replaces the raw [DropdownButtonFormField] for step type selection.
-/// Shows the current type with its icon and a "Change" badge. Tapping opens
-/// the [StepTypePickerDialog] so the user can preview types before choosing.
+/// Shows the current step type with its icon and a "Change" badge. Tapping
+/// opens [StepTypePickerDialog] so the user can preview types before choosing.
+/// Accepts a full [StepDraft] so it can resolve display info for both system
+/// and custom types.
 class _StepTypeButton extends StatelessWidget {
   const _StepTypeButton({
-    required this.currentType,
+    required this.draft,
     required this.onChanged,
   });
 
-  final LessonStepType currentType;
-  final ValueChanged<LessonStepType> onChanged;
+  final StepDraft draft;
+  final ValueChanged<PickedStepType> onChanged;
+
+  IconData get _icon {
+    return draft.stepType.icon;
+  }
+
+  String get _label {
+    if (draft.customStepType != null) return draft.customStepType!.displayName;
+    return draft.stepType.displayName;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -553,7 +581,9 @@ class _StepTypeButton extends StatelessWidget {
       onTap: () async {
         final picked = await showStepTypePicker(
           context: context,
-          initialType: currentType,
+          initialSystemType:
+              draft.customStepType == null ? draft.stepType : null,
+          initialCustomType: draft.customStepType,
         );
         if (picked != null) onChanged(picked);
       },
@@ -567,11 +597,7 @@ class _StepTypeButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(
-              currentType.icon,
-              size: 18,
-              color: const Color(0xFFE85D04),
-            ),
+            Icon(_icon, size: 18, color: const Color(0xFFE85D04)),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -583,7 +609,7 @@ class _StepTypeButton extends StatelessWidget {
                     style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                   ),
                   Text(
-                    currentType.displayName,
+                    _label,
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,

@@ -380,6 +380,12 @@ extension LessonStepTypeDisplay on LessonStepType {
 class LessonStepInput {
   final String stepKey;
   final LessonStepType stepType;
+
+  /// Set when this step uses an admin-created custom type. When non-null,
+  /// [customStepTypeKey] is written to `lesson_steps.step_type` instead of
+  /// [stepType.dbValue].
+  final String? customStepTypeKey;
+
   final int position;
   final bool required;
   final Map<String, dynamic>? config;
@@ -387,6 +393,7 @@ class LessonStepInput {
   LessonStepInput({
     required this.stepKey,
     required this.stepType,
+    this.customStepTypeKey,
     required this.position,
     required this.required,
     required this.config,
@@ -396,7 +403,7 @@ class LessonStepInput {
     return {
       'lesson_id': lessonId,
       'step_key': stepKey,
-      'step_type': stepType.dbValue,
+      'step_type': customStepTypeKey ?? stepType.dbValue,
       'position': position,
       'required': required,
       'config': config,

@@ -1,73 +1,74 @@
 import 'package:flutter/material.dart';
 
+import '../../utils/app_colors.dart';
 import 'widgets/video_fields_section.dart';
 import 'widgets/resources_list_section.dart';
+import 'widgets/step_types_section.dart';
 
 class ContentManagementScreen extends StatelessWidget {
   const ContentManagementScreen({super.key});
 
+  BoxDecoration get _cardDecoration => BoxDecoration(
+        color: AppColors.faintGrey,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderColor),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'App Content',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Manage global content served to the mobile app.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 32),
-              // ── Videos & Thumbnail ────────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const VideoFieldsSection(),
-              ),
-              const SizedBox(height: 24),
-              // ── Downloadable Resources ────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const ResourcesListSection(),
-              ),
-            ],
-          ),
-        ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 1000;
+
+          final videoCard = Container(
+            padding: const EdgeInsets.all(16),
+            decoration: _cardDecoration,
+            child: const VideoFieldsSection(),
+          );
+
+          final resourcesCard = Container(
+            padding: const EdgeInsets.all(16),
+            decoration: _cardDecoration,
+            child: const ResourcesListSection(),
+          );
+
+          final stepTypesCard = Container(
+            padding: const EdgeInsets.all(16),
+            decoration: _cardDecoration,
+            child: const StepTypesSection(),
+          );
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: isWide
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            videoCard,
+                            const SizedBox(height: 16),
+                            resourcesCard,
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(child: stepTypesCard),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      videoCard,
+                      const SizedBox(height: 16),
+                      resourcesCard,
+                      const SizedBox(height: 16),
+                      stepTypesCard,
+                    ],
+                  ),
+          );
+        },
       ),
     );
   }

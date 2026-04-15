@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../utils/app_colors.dart';
+import '../../../widgets/app_button.dart';
 import '../app_resource_model.dart';
 import '../content_management_providers.dart';
 import '../content_management_repository.dart';
@@ -26,10 +28,14 @@ class ResourcesListSection extends ConsumerWidget {
                   ?.copyWith(fontWeight: FontWeight.w600),
             ),
             const Spacer(),
-            FilledButton.icon(
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add Resource'),
-              onPressed: () => _showAddDialog(context, ref),
+            SizedBox(
+              width: 160,
+              child: AppButton(
+                label: '+ Add Resource',
+                backgroundColor: AppColors.primaryColor,
+                height: 36,
+                onPressed: () => _showAddDialog(context, ref),
+              ),
             ),
           ],
         ),

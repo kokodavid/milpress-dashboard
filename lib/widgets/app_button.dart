@@ -10,7 +10,7 @@ class AppButton extends StatelessWidget {
     this.backgroundColor,
     this.textColor,
     this.outlined = false,
-    this.height = 48,
+    this.height = 52,
     this.borderRadius,
   });
 
@@ -25,7 +25,7 @@ class AppButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final br = borderRadius ?? BorderRadius.circular(8);
+    final br = borderRadius ?? BorderRadius.circular(12);
 
     if (outlined) {
       final Color sideColor = backgroundColor ?? theme.colorScheme.primary;

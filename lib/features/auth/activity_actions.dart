@@ -40,4 +40,9 @@ class ActivityActions {
   static const String appResourceCreated = 'app_resource_created';
   static const String appResourceUpdated = 'app_resource_updated';
   static const String appResourceDeleted = 'app_resource_deleted';
+
+  // Step type actions
+  static const String stepTypeCreated = 'step_type_created';
+  static const String stepTypeUpdated = 'step_type_updated';
+  static const String stepTypeDeleted = 'step_type_deleted';
 }

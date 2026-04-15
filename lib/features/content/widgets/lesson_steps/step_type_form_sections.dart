@@ -10,6 +10,11 @@ Widget buildLessonStepTypeFields({
   required StepDraft step,
   required StepFormSetState setState,
 }) {
+  // Custom admin-created types use a simple JSON config editor.
+  if (step.customStepType != null) {
+    return _buildGenericJsonFields(step);
+  }
+
   switch (step.stepType) {
     case LessonStepType.introduction:
       return _buildIntroductionFields(step);
@@ -2823,5 +2828,39 @@ Widget _buildAssessmentOptionRow({
         ),
       ],
     ),
+  );
+}
+
+// ── Generic JSON config editor (custom step types) ────────────────────────────
+
+Widget _buildGenericJsonFields(StepDraft step) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Step Config (JSON)',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Colors.grey.shade700,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        'Enter the configuration for this custom step as a JSON object.',
+        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+      ),
+      const SizedBox(height: 8),
+      TextFormField(
+        controller: step.customConfigCtrl,
+        decoration: const InputDecoration(
+          hintText: '{}',
+          border: OutlineInputBorder(),
+          alignLabelWithHint: true,
+        ),
+        maxLines: 6,
+        style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+      ),
+    ],
   );
 }

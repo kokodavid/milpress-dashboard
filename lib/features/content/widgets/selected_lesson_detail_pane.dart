@@ -222,28 +222,26 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                       ),
                   ],
                 ),
-                if (steps.length < 4) ...[
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: 180,
-                    height: 36,
-                    child: AppButton(
-                      label: 'Add More Steps',
-                      backgroundColor: AppColors.primaryColor,
-                      onPressed: () async {
-                        final created = await showCreateLessonStepsDialog(
-                          context: context,
-                          ref: ref,
-                          lessonId: lesson.id,
-                          initialSteps: steps,
-                        );
-                        if (created == true) {
-                          ref.invalidate(lessonByIdProvider(lesson.id));
-                        }
-                      },
-                    ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: 180,
+                  height: 36,
+                  child: AppButton(
+                    label: 'Add More Steps',
+                    backgroundColor: AppColors.primaryColor,
+                    onPressed: () async {
+                      final created = await showCreateLessonStepsDialog(
+                        context: context,
+                        ref: ref,
+                        lessonId: lesson.id,
+                        initialSteps: steps,
+                      );
+                      if (created == true) {
+                        ref.invalidate(lessonByIdProvider(lesson.id));
+                      }
+                    },
                   ),
-                ],
+                ),
               ],
             ],
           ),

@@ -169,7 +169,17 @@ class _StepTypePickerDialogState extends ConsumerState<StepTypePickerDialog> {
 
   Widget _buildScrollableGrid() {
     final grouped = _groupedSystem;
-    final customAsync = ref.watch(customStepTypesProvider);
+    final allTypesAsync = ref.watch(allStepTypesProvider);
+
+    // Build a key → previewUrl map from backend data (covers both system and custom).
+    final Map<String, String?> previewUrlByKey = allTypesAsync.whenOrNull(
+          data: (types) => {for (final t in types) t.key: t.previewUrl},
+        ) ??
+        {};
+
+    final customTypes = allTypesAsync.whenOrNull(
+      data: (types) => types.where((t) => !t.isSystem).toList(),
+    );
 
     return SingleChildScrollView(
       child: Column(
@@ -179,30 +189,26 @@ class _StepTypePickerDialogState extends ConsumerState<StepTypePickerDialog> {
           for (final category in _categoryOrder) ...[
             _buildCategoryHeader(category, _categoryAccentColor(category)),
             const SizedBox(height: 8),
-            _buildSystemCategoryWrap(grouped[category]!),
+            _buildSystemCategoryWrap(grouped[category]!, previewUrlByKey),
             const SizedBox(height: 16),
           ],
 
           // ── Custom types ────────────────────────────────────────────────────
-          customAsync.when(
-            loading: () => const Padding(
+          if (allTypesAsync.isLoading)
+            const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
               child: Center(child: CircularProgressIndicator()),
+            )
+          else if (customTypes != null && customTypes.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildCategoryHeader('Custom', Colors.deepPurple.shade400),
+                const SizedBox(height: 8),
+                _buildCustomCategoryWrap(customTypes),
+                const SizedBox(height: 16),
+              ],
             ),
-            error: (_, __) => const SizedBox.shrink(),
-            data: (customTypes) {
-              if (customTypes.isEmpty) return const SizedBox.shrink();
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildCategoryHeader('Custom', Colors.deepPurple.shade400),
-                  const SizedBox(height: 8),
-                  _buildCustomCategoryWrap(customTypes),
-                  const SizedBox(height: 16),
-                ],
-              );
-            },
-          ),
         ],
       ),
     );
@@ -233,7 +239,10 @@ class _StepTypePickerDialogState extends ConsumerState<StepTypePickerDialog> {
     );
   }
 
-  Widget _buildSystemCategoryWrap(List<LessonStepType> types) {
+  Widget _buildSystemCategoryWrap(
+    List<LessonStepType> types,
+    Map<String, String?> previewUrlByKey,
+  ) {
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -246,6 +255,7 @@ class _StepTypePickerDialogState extends ConsumerState<StepTypePickerDialog> {
               type: type,
               isSelected: _selectedSystem == type,
               onTap: () => _selectSystem(type),
+              previewUrl: previewUrlByKey[type.dbValue],
             ),
           ),
       ],
@@ -342,11 +352,13 @@ class _SystemTypeCard extends StatelessWidget {
     required this.type,
     required this.isSelected,
     required this.onTap,
+    this.previewUrl,
   });
 
   final LessonStepType type;
   final bool isSelected;
   final VoidCallback onTap;
+  final String? previewUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -435,10 +447,9 @@ class _SystemTypeCard extends StatelessWidget {
   }
 
   Widget _buildImage() {
-    final url = type.previewUrl;
-    if (url != null) {
+    if (previewUrl != null) {
       return Image.network(
-        url,
+        previewUrl!,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => _PlaceholderPreview(
           label: type.displayName,

@@ -227,6 +227,12 @@ class StepDetails extends StatelessWidget {
                 final label = item['label']?.toString() ?? '';
                 final imageUrl = item['image_url']?.toString() ?? '';
                 final soundUrl = item['sound_url']?.toString() ?? '';
+                // highlighted_letters may be absent in older data; fall back to
+                // the first letter of the label so the display is always clear.
+                final rawHighlight = item['highlighted_letters'];
+                final highlightedLetters = rawHighlight is String && rawHighlight.isNotEmpty
+                    ? rawHighlight
+                    : (label.isNotEmpty ? label[0] : '');
                 return KeyValueGroup(
                   title: label.isNotEmpty ? label : 'Item',
                   rows: [
@@ -234,6 +240,11 @@ class StepDetails extends StatelessWidget {
                       DetailRow(label: 'Image', value: imageUrl),
                     if (soundUrl.isNotEmpty)
                       DetailRow(label: 'Sound', value: soundUrl),
+                    if (highlightedLetters.isNotEmpty)
+                      DetailRow(
+                        label: 'Highlighted',
+                        value: highlightedLetters,
+                      ),
                   ],
                 );
               }

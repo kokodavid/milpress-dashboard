@@ -2769,6 +2769,18 @@ Widget _buildPracticeItemRow({
               ),
             ),
             const SizedBox(width: 8),
+            Expanded(
+              child: TextFormField(
+                controller: item.highlightedLettersCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Highlighted Letters',
+                  hintText: 'e.g. a',
+                  helperText: 'Defaults to first letter if left empty',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             IconButton(onPressed: onRemove, icon: const Icon(Icons.close)),
           ],
         ),

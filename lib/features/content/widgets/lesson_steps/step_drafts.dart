@@ -112,9 +112,17 @@ class StepDraft {
               final label = item['label'];
               final imageUrl = item['image_url'];
               final soundUrl = item['sound_url'];
+              final highlightedLetters = item['highlighted_letters'];
               if (label is String) draftItem.labelCtrl.text = label;
               if (imageUrl is String) draftItem.imageUrlCtrl.text = imageUrl;
               if (soundUrl is String) draftItem.soundUrlCtrl.text = soundUrl;
+              // Default to first letter of label when the field is absent
+              // (backwards-compatibility for existing data).
+              if (highlightedLetters is String) {
+                draftItem.highlightedLettersCtrl.text = highlightedLetters;
+              } else if (label is String && label.isNotEmpty) {
+                draftItem.highlightedLettersCtrl.text = label[0];
+              }
               draft.practiceItems.add(draftItem);
             }
           }
@@ -1228,6 +1236,7 @@ class PracticeItemDraft {
   final TextEditingController labelCtrl = TextEditingController();
   final TextEditingController imageUrlCtrl = TextEditingController();
   final TextEditingController soundUrlCtrl = TextEditingController();
+  final TextEditingController highlightedLettersCtrl = TextEditingController();
 
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
@@ -1240,6 +1249,12 @@ class PracticeItemDraft {
     if (soundUrlCtrl.text.trim().isNotEmpty) {
       map['sound_url'] = soundUrlCtrl.text.trim();
     }
+    // Always persist highlighted_letters so the app can render the highlight.
+    // Fall back to the first character of the label when the field is empty.
+    final highlighted = highlightedLettersCtrl.text.trim();
+    final label = labelCtrl.text.trim();
+    map['highlighted_letters'] =
+        highlighted.isNotEmpty ? highlighted : (label.isNotEmpty ? label[0] : '');
     return map;
   }
 
@@ -1247,6 +1262,7 @@ class PracticeItemDraft {
     labelCtrl.dispose();
     imageUrlCtrl.dispose();
     soundUrlCtrl.dispose();
+    highlightedLettersCtrl.dispose();
   }
 }
 

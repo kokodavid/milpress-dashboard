@@ -30,6 +30,7 @@ class StepDraft {
       targetSoundCtrl = TextEditingController(),
       referenceWordCtrl = TextEditingController(),
       soundDiscriminationTipCtrl = TextEditingController(),
+      soundDiscriminationInstructionCtrl = TextEditingController(),
       practiceGameInstructionCtrl = TextEditingController(),
       practiceGameInstructionAudioCtrl = TextEditingController(),
       practiceGameTargetSoundCtrl = TextEditingController(),
@@ -208,6 +209,10 @@ class StepDraft {
         final tipText = config['tip_text'];
         if (tipText is String) {
           draft.soundDiscriminationTipCtrl.text = tipText;
+        }
+        final instructionText = config['instruction_text'];
+        if (instructionText is String) {
+          draft.soundDiscriminationInstructionCtrl.text = instructionText;
         }
         final items = config['items'];
         if (items is List) {
@@ -687,6 +692,7 @@ class StepDraft {
   final TextEditingController targetSoundCtrl;
   final TextEditingController referenceWordCtrl;
   final TextEditingController soundDiscriminationTipCtrl;
+  final TextEditingController soundDiscriminationInstructionCtrl;
   final List<SoundDiscriminationItemDraft> soundDiscriminationItems = [];
   final List<SoundItemMatchingActivityDraft> soundItemMatchingActivities = [];
   final List<GuidedReadingActivityDraft> guidedReadingActivities = [];
@@ -1034,6 +1040,8 @@ class StepDraft {
             'reference_word': referenceWordCtrl.text.trim(),
           if (soundDiscriminationTipCtrl.text.trim().isNotEmpty)
             'tip_text': soundDiscriminationTipCtrl.text.trim(),
+          if (soundDiscriminationInstructionCtrl.text.trim().isNotEmpty)
+            'instruction_text': soundDiscriminationInstructionCtrl.text.trim(),
           if (items.isNotEmpty) 'items': items,
         };
       case LessonStepType.soundItemMatching:
@@ -1187,6 +1195,7 @@ class StepDraft {
     targetSoundCtrl.dispose();
     referenceWordCtrl.dispose();
     soundDiscriminationTipCtrl.dispose();
+    soundDiscriminationInstructionCtrl.dispose();
     practiceGameInstructionCtrl.dispose();
     practiceGameInstructionAudioCtrl.dispose();
     practiceGameTargetSoundCtrl.dispose();

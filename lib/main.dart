@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'secrets.dart';
 import 'router.dart';
+import 'theme/milpress_theme.dart';
 
 
 
@@ -26,10 +27,7 @@ class MilpressApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Milpress Dashboard',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
+      theme: milpressTheme(),
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
     );

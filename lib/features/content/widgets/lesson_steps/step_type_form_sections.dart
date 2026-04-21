@@ -755,6 +755,16 @@ Widget _buildSoundDiscriminationFields(
         ),
         maxLines: 2,
       ),
+      const SizedBox(height: 8),
+      TextFormField(
+        controller: step.soundDiscriminationInstructionCtrl,
+        decoration: const InputDecoration(
+          labelText: 'Instruction Text',
+          hintText: 'Tap YES if the word has the sound, NO if it does not.',
+          border: OutlineInputBorder(),
+        ),
+        maxLines: 2,
+      ),
       const SizedBox(height: 12),
       Text('Items', style: Theme.of(context).textTheme.bodyMedium),
       const SizedBox(height: 6),

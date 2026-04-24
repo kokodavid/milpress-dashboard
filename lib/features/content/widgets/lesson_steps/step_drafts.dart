@@ -715,9 +715,15 @@ class StepDraft {
   final TextEditingController miniStoryCardInstructionAudioCtrl;
   final List<MiniStoryCardItemDraft> miniStoryCardItems = [];
 
-  /// JSON config editor for custom step types. Pre-filled with `{}`.
-  final TextEditingController customConfigCtrl =
-      TextEditingController(text: '{}');
+  /// Per-field controllers for custom step types (flat fields only).
+  /// Keyed by [StepFieldDefinition.name]. Populated by [setCustomType].
+  final Map<String, TextEditingController> customFieldCtrls = {};
+
+  /// Per-activity controllers for repeating-group fields.
+  /// Outer key = field.name, value = ordered list of activity rows.
+  /// Each row is a map of {subField.name → TextEditingController}.
+  final Map<String, List<Map<String, TextEditingController>>>
+      customActivityCtrls = {};
 
   void setStepType(LessonStepType type) {
     customStepType = null;
@@ -776,9 +782,83 @@ class StepDraft {
 
   /// Sets this step to a custom (admin-created) type. Clears any previously
   /// selected system type and resets the JSON config to `{}`.
-  void setCustomType(StepTypeDefinition def) {
+  /// Sets the custom step type and (re)initialises per-field controllers.
+  ///
+  /// Pass [existingConfig] when editing an existing step so controllers are
+  /// pre-populated with their saved values.
+  void setCustomType(
+    StepTypeDefinition def, {
+    Map<String, dynamic>? existingConfig,
+  }) {
+    // Dispose and clear all previous controllers.
+    for (final ctrl in customFieldCtrls.values) {
+      ctrl.dispose();
+    }
+    customFieldCtrls.clear();
+    _disposeActivityCtrls();
+    customActivityCtrls.clear();
+
     customStepType = def;
-    customConfigCtrl.text = '{}';
+
+    for (final field in def.fields) {
+      if (field.fieldType == StepFieldType.repeatingGroup) {
+        // Restore saved activity rows, or start with one blank row.
+        final savedRows = existingConfig?[field.name];
+        final rows = <Map<String, TextEditingController>>[];
+        if (savedRows is List && savedRows.isNotEmpty) {
+          for (final row in savedRows) {
+            final rowMap = <String, TextEditingController>{};
+            for (final sub in field.subFields) {
+              final val = row is Map ? row[sub.name] : null;
+              rowMap[sub.name] =
+                  TextEditingController(text: val is String ? val : '');
+            }
+            rows.add(rowMap);
+          }
+        } else {
+          rows.add(_blankActivityRow(field));
+        }
+        customActivityCtrls[field.name] = rows;
+      } else {
+        final saved = existingConfig?[field.name];
+        customFieldCtrls[field.name] = TextEditingController(
+          text: saved is String ? saved : '',
+        );
+      }
+    }
+  }
+
+  /// Returns a blank row of controllers for a repeating-group [field].
+  Map<String, TextEditingController> _blankActivityRow(
+      StepFieldDefinition field) {
+    return {for (final sub in field.subFields) sub.name: TextEditingController()};
+  }
+
+  /// Adds a blank activity row to the repeating-group field named [fieldName].
+  void addCustomActivity(String fieldName, StepFieldDefinition field) {
+    customActivityCtrls[fieldName] ??= [];
+    customActivityCtrls[fieldName]!.add(_blankActivityRow(field));
+  }
+
+  /// Removes the activity row at [index] from the repeating-group field
+  /// named [fieldName].
+  void removeCustomActivity(String fieldName, int index) {
+    final rows = customActivityCtrls[fieldName];
+    if (rows == null || index >= rows.length) return;
+    for (final ctrl in rows[index].values) {
+      ctrl.dispose();
+    }
+    rows.removeAt(index);
+  }
+
+  void _disposeActivityCtrls() {
+    for (final rows in customActivityCtrls.values) {
+      for (final row in rows) {
+        for (final ctrl in row.values) {
+          ctrl.dispose();
+        }
+      }
+    }
   }
 
   void addImageUrl() => imageUrlCtrls.add(TextEditingController());
@@ -928,17 +1008,27 @@ class StepDraft {
 
   Map<String, dynamic> _buildConfig() {
     if (customStepType != null) {
-      // Try to parse user-entered JSON; fall back to empty map on error.
-      try {
-        final raw = customConfigCtrl.text.trim();
-        if (raw.isNotEmpty) {
-          final decoded = jsonDecode(raw);
-          if (decoded is Map) {
-            return Map<String, dynamic>.from(decoded);
+      final config = <String, dynamic>{};
+
+      // Flat fields.
+      for (final entry in customFieldCtrls.entries) {
+        final value = entry.value.text.trim();
+        if (value.isNotEmpty) config[entry.key] = value;
+      }
+
+      // Repeating-group fields — serialize as JSON arrays.
+      for (final entry in customActivityCtrls.entries) {
+        config[entry.key] = entry.value.map((row) {
+          final rowMap = <String, dynamic>{};
+          for (final sub in row.entries) {
+            final v = sub.value.text.trim();
+            if (v.isNotEmpty) rowMap[sub.key] = v;
           }
-        }
-      } catch (_) {}
-      return {};
+          return rowMap;
+        }).toList();
+      }
+
+      return config;
     }
     switch (stepType) {
       case LessonStepType.introduction:
@@ -1237,7 +1327,12 @@ class StepDraft {
     for (final item in miniStoryCardItems) {
       item.dispose();
     }
-    customConfigCtrl.dispose();
+    for (final ctrl in customFieldCtrls.values) {
+      ctrl.dispose();
+    }
+    customFieldCtrls.clear();
+    _disposeActivityCtrls();
+    customActivityCtrls.clear();
   }
 }
 

@@ -67,6 +67,19 @@ class LessonV2RepositoryImpl implements LessonV2Repository {
   }
 
   @override
+  Future<void> publishLesson(
+    String lessonId,
+    List<LessonStepInput> steps,
+  ) async {
+    // Delete-then-insert so step_type is always written fresh (no stale rows).
+    await _client.from(stepsTable).delete().eq('lesson_id', lessonId);
+    if (steps.isNotEmpty) {
+      final inserts = steps.map((s) => s.toInsertMap(lessonId)).toList();
+      await _client.from(stepsTable).insert(inserts);
+    }
+  }
+
+  @override
   Future<void> deleteLesson(String id) async {
     await _client.from(lessonsTable).delete().eq('id', id);
   }

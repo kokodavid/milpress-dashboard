@@ -74,8 +74,17 @@ create table if not exists lesson_step_types (
   icon_name    text        not null default 'extension',
   preview_url  text,
   is_system    boolean     not null default false,
+  -- JSONB array of field definitions for the visual form builder.
+  -- Each element: { name, label, field_type, is_required, hint? }
+  -- field_type is one of: 'text', 'image_url', 'audio_url'
+  field_schema jsonb       not null default '[]'::jsonb,
   created_at   timestamptz default now()
 );
+
+-- Add field_schema to an existing database (run once):
+--
+--   alter table lesson_step_types
+--     add column if not exists field_schema jsonb not null default '[]'::jsonb;
 
 -- Seed the 15 built-in step types (idempotent).
 insert into lesson_step_types (key, display_name, description, category, icon_name, is_system) values

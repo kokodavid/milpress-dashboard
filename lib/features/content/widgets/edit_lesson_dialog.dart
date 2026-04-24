@@ -194,41 +194,10 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                DropdownButtonFormField<LessonType>(
-                                  value: _lessonType,
-                                  decoration: InputDecoration(
-                                    hintText: 'Select type',
-                                    hintStyle: TextStyle(color: Colors.grey.shade400),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.grey.shade300),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(color: Colors.grey.shade300),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(color: Color(0xFFE85D04)),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
-                                    ),
-                                  ),
-                                  items: LessonType.values
-                                      .map(
-                                        (type) => DropdownMenuItem(
-                                          value: type,
-                                          child: Text(type.name),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      setState(() => _lessonType = value);
-                                    }
-                                  },
+                                _EditLessonTypePicker(
+                                  selected: _lessonType,
+                                  onChanged: (t) =>
+                                      setState(() => _lessonType = t),
                                 ),
                               ],
                             ),
@@ -321,5 +290,96 @@ class _EditLessonDialogState extends ConsumerState<EditLessonDialog> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+}
+
+// ── Lesson-type pill picker (shared design) ──────────────────────────────────
+
+class _EditLessonTypePicker extends StatelessWidget {
+  const _EditLessonTypePicker({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final LessonType selected;
+  final ValueChanged<LessonType> onChanged;
+
+  static const _orange = Color(0xFFE85D04);
+
+  static String _label(LessonType t) {
+    switch (t) {
+      case LessonType.letter:
+        return 'Letter';
+      case LessonType.word:
+        return 'Word';
+      case LessonType.sentence:
+        return 'Sentence';
+    }
+  }
+
+  static String _sublabel(LessonType t) {
+    switch (t) {
+      case LessonType.letter:
+        return 'Single-letter foc…';
+      case LessonType.word:
+        return 'Whole-word rea…';
+      case LessonType.sentence:
+        return 'Sentence-level';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: LessonType.values.map((type) {
+        final isSelected = type == selected;
+        return Expanded(
+          child: GestureDetector(
+            onTap: () => onChanged(type),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              margin: EdgeInsets.only(
+                right: type != LessonType.sentence ? 6 : 0,
+              ),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFFFFF4EE) : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isSelected ? _orange : Colors.grey.shade300,
+                  width: isSelected ? 1.5 : 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _label(type),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? _orange : Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _sublabel(type),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isSelected
+                          ? _orange.withOpacity(0.75)
+                          : Colors.grey.shade500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 }

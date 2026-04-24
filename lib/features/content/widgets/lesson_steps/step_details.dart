@@ -72,11 +72,17 @@ class _StepCardState extends State<StepCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          step.stepKey,
+                          step.stepKey.isNotEmpty
+                              ? step.stepKey
+                              : (title != null && title.isNotEmpty
+                                  ? title
+                                  : step.stepType.name),
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),
-                        if (title != null && title.isNotEmpty) ...[
+                        if (step.stepKey.isNotEmpty &&
+                            title != null &&
+                            title.isNotEmpty) ...[
                           const SizedBox(height: 2),
                           Text(
                             title,

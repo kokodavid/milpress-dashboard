@@ -9,6 +9,7 @@ import 'features/content/lessons_list_screen.dart';
 import 'features/content/quizzes_list_screen.dart';
 import 'features/assessment_v2/assessment_v2_screen.dart';
 import 'features/content_management/content_management_screen.dart';
+import 'features/lesson_builder/lesson_builder_screen.dart';
 import 'widgets/app_shell.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -17,6 +18,14 @@ final GoRouter appRouter = GoRouter(
 		GoRoute(
 			path: '/login',
 			builder: (context, state) => const AdminLoginScreen(),
+		),
+		// Full-screen lesson steps builder — outside AppShell (has its own top bar)
+		GoRoute(
+			path: '/lessons/:lessonId/steps',
+			builder: (context, state) {
+				final lessonId = state.pathParameters['lessonId']!;
+				return LessonStepsBuilderScreen(lessonId: lessonId);
+			},
 		),
 		ShellRoute(
 			builder: (context, state, child) => AppShell(child: child),

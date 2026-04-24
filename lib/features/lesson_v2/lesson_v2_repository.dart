@@ -14,6 +14,12 @@ abstract class LessonV2Repository {
   );
   Future<void> updateLesson(String id, NewLessonUpdate update);
   Future<void> updateSteps(String lessonId, List<LessonStepInput> steps);
+
+  /// Flush the current steps and mark the lesson as published.
+  /// Cancels any in-flight auto-save and persists the canonical step list
+  /// (including step_type) in a single atomic operation.
+  Future<void> publishLesson(String lessonId, List<LessonStepInput> steps);
+
   Future<void> deleteLesson(String id);
   Future<void> reorderLessons(String moduleId, List<String> orderedLessonIds);
   Future<int> countLessons();
@@ -114,6 +120,42 @@ final saveLessonProvider =
     StateNotifierProvider<SaveLessonController, AsyncValue<NewLesson?>>((ref) {
   final repo = ref.watch(lessonV2RepositoryProvider);
   return SaveLessonController(repo, ref);
+});
+
+// ── Publish controller ────────────────────────────────────────────────────────
+
+class PublishLessonController extends StateNotifier<AsyncValue<void>> {
+  final LessonV2Repository _repo;
+  final Ref _ref;
+
+  PublishLessonController(this._repo, this._ref)
+      : super(const AsyncData(null));
+
+  Future<void> publish(
+    String lessonId,
+    List<LessonStepInput> steps,
+  ) async {
+    state = const AsyncLoading();
+    try {
+      await _repo.publishLesson(lessonId, steps);
+      await _ref.read(adminActivityRepositoryProvider).log(
+        action: ActivityActions.lessonPublished,
+        targetType: 'lesson',
+        targetId: lessonId,
+        details: {'steps_count': steps.length},
+      );
+      state = const AsyncData(null);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+}
+
+final publishLessonProvider =
+    StateNotifierProvider<PublishLessonController, AsyncValue<void>>((ref) {
+  final repo = ref.watch(lessonV2RepositoryProvider);
+  return PublishLessonController(repo, ref);
 });
 
 class DeleteLessonController extends StateNotifier<AsyncValue<void>> {

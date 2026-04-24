@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:milpress_dashboard/utils/app_colors.dart';
 
 import '../../lesson_v2/lesson_v2_repository.dart';
 import 'delete_lesson_dialog.dart';
 import 'edit_lesson_dialog.dart';
 import '../state/lessons_list_controller.dart';
-import '../../../widgets/app_button.dart';
 import 'lesson_steps/step_actions.dart';
 import 'lesson_steps/step_details.dart';
-import 'lesson_steps/step_dialogs.dart';
 
 class SelectedLessonDetailPane extends ConsumerWidget {
   const SelectedLessonDetailPane({super.key});
@@ -144,8 +143,11 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                                     lessonsForModuleProvider(lesson.moduleId),
                                   );
                                   ref
-                                      .read(selectedLessonIdProvider.notifier)
-                                      .state = null;
+                                          .read(
+                                            selectedLessonIdProvider.notifier,
+                                          )
+                                          .state =
+                                      null;
                                 },
                               );
                             },
@@ -176,26 +178,34 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('No steps for this lesson'),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: 160,
-                      height: 36,
-                      child: AppButton(
-                        label: 'Create Steps',
-                        backgroundColor: AppColors.primaryColor,
-                        onPressed: () async {
-                          final created = await showCreateLessonStepsDialog(
-                            context: context,
-                            ref: ref,
-                            lessonId: lesson.id,
-                            initialSteps: steps,
-                          );
-                          if (created == true) {
-                            ref.invalidate(lessonByIdProvider(lesson.id));
-                          }
-                        },
-                      ),
+                    const Text('No steps for this lesson yet.'),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        SizedBox(
+                          height: 36,
+                          child: ElevatedButton.icon(
+                            onPressed: () =>
+                                context.go('/lessons/${lesson.id}/steps'),
+                            icon: const Icon(Icons.edit_note, size: 16),
+                            label: const Text(
+                              'Continue to Steps',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryColor,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 )
@@ -205,13 +215,8 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                     for (final entry in steps.asMap().entries)
                       StepCard(
                         step: entry.value,
-                        onEdit: () => editStep(
-                          context,
-                          ref,
-                          lesson.id,
-                          steps,
-                          entry.key,
-                        ),
+                        onEdit: () =>
+                            editStep(context, ref, lesson.id, steps, entry.key),
                         onDelete: () => deleteStep(
                           context,
                           ref,
@@ -222,25 +227,33 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                       ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: 180,
-                  height: 36,
-                  child: AppButton(
-                    label: 'Add More Steps',
-                    backgroundColor: AppColors.primaryColor,
-                    onPressed: () async {
-                      final created = await showCreateLessonStepsDialog(
-                        context: context,
-                        ref: ref,
-                        lessonId: lesson.id,
-                        initialSteps: steps,
-                      );
-                      if (created == true) {
-                        ref.invalidate(lessonByIdProvider(lesson.id));
-                      }
-                    },
-                  ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    SizedBox(
+                      height: 36,
+                      child: ElevatedButton.icon(
+                        onPressed: () =>
+                            context.go('/lessons/${lesson.id}/steps'),
+                        icon: const Icon(Icons.edit_note, size: 16),
+                        label: const Text(
+                          'Continue to Steps',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ],
@@ -269,10 +282,7 @@ class _EmptyDetailPlaceholder extends StatelessWidget {
 }
 
 class _MetaChip extends StatelessWidget {
-  const _MetaChip({
-    required this.icon,
-    required this.label,
-  });
+  const _MetaChip({required this.icon, required this.label});
 
   final IconData icon;
   final String label;

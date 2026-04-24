@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../lesson_v2/lesson_v2_models.dart';
+import '../../../lesson_v2/step_type_definition.dart';
 import 'step_drafts.dart';
 
 typedef StepFormSetState = void Function(VoidCallback fn);
@@ -10,9 +11,9 @@ Widget buildLessonStepTypeFields({
   required StepDraft step,
   required StepFormSetState setState,
 }) {
-  // Custom admin-created types use a simple JSON config editor.
+  // Custom admin-created types use the visual dynamic form.
   if (step.customStepType != null) {
-    return _buildGenericJsonFields(step);
+    return _buildDynamicFields(step);
   }
 
   switch (step.stepType) {
@@ -53,6 +54,35 @@ String? validateLessonStepDraft(StepDraft step) {
   if (step.stepKeyCtrl.text.trim().isEmpty) {
     return 'Every step needs a step key';
   }
+
+  // Custom step types have their own field schema — skip the system-type
+  // title check and switch entirely, and only validate their defined fields.
+  if (step.customStepType != null) {
+    final def = step.customStepType!;
+    for (final field in def.fields) {
+      if (field.fieldType == StepFieldType.repeatingGroup) {
+        final rows = step.customActivityCtrls[field.name] ?? [];
+        if (field.isRequired && rows.isEmpty) {
+          return '${def.displayName} steps need at least one ${field.label}';
+        }
+        for (var i = 0; i < rows.length; i++) {
+          for (final sub in field.subFields.where((s) => s.isRequired)) {
+            final ctrl = rows[i][sub.name];
+            if (ctrl == null || ctrl.text.trim().isEmpty) {
+              return '${field.label} #${i + 1} requires "${sub.label}"';
+            }
+          }
+        }
+      } else if (field.isRequired) {
+        final ctrl = step.customFieldCtrls[field.name];
+        if (ctrl == null || ctrl.text.trim().isEmpty) {
+          return '${def.displayName} steps require "${field.label}"';
+        }
+      }
+    }
+    return null;
+  }
+
   if (step.titleCtrl.text.trim().isEmpty) {
     return 'Every step needs a title';
   }
@@ -2853,36 +2883,413 @@ Widget _buildAssessmentOptionRow({
   );
 }
 
-// ── Generic JSON config editor (custom step types) ────────────────────────────
+// ── Dynamic form for custom step types ───────────────────────────────────────
 
-Widget _buildGenericJsonFields(StepDraft step) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        'Step Config (JSON)',
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: Colors.grey.shade700,
+Widget _buildDynamicFields(StepDraft step) {
+  final def = step.customStepType!;
+
+  if (def.fields.isEmpty) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(8),
+        color: Colors.grey.shade50,
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.info_outline, size: 20, color: Colors.grey.shade400),
+          const SizedBox(height: 6),
+          Text(
+            'No fields have been defined for "${def.displayName}" yet.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Go to Content Management → Step Types to add fields.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+          ),
+        ],
+      ),
+    );
+  }
+
+  return _DynamicFieldsForm(step: step, def: def);
+}
+
+// ── Stateful wrapper so repeating-group add/remove can call setState ──────────
+
+class _DynamicFieldsForm extends StatefulWidget {
+  const _DynamicFieldsForm({required this.step, required this.def});
+  final StepDraft step;
+  final StepTypeDefinition def;
+
+  @override
+  State<_DynamicFieldsForm> createState() => _DynamicFieldsFormState();
+}
+
+class _DynamicFieldsFormState extends State<_DynamicFieldsForm> {
+  static const _orange = Color(0xFFE85D04);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final field in widget.def.fields)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: field.fieldType == StepFieldType.repeatingGroup
+                ? _buildRepeatingGroup(field)
+                : _DynamicFieldInput(
+                    field: field,
+                    controller: widget.step.customFieldCtrls[field.name] ??
+                        TextEditingController(),
+                  ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildRepeatingGroup(StepFieldDefinition field) {
+    final rows = widget.step.customActivityCtrls[field.name] ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header row
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        field.label,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      if (field.isRequired)
+                        Text(' *',
+                            style: TextStyle(
+                                color: Colors.red.shade600, fontSize: 13)),
+                    ],
+                  ),
+                  Text(
+                    '${rows.length} ${rows.length == 1 ? 'activity' : 'activities'}',
+                    style:
+                        TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                  ),
+                ],
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () => setState(() {
+                widget.step.addCustomActivity(field.name, field);
+              }),
+              icon: const Icon(Icons.add, size: 16),
+              label: Text('Add ${field.label}'),
+              style: TextButton.styleFrom(
+                foregroundColor: _orange,
+                textStyle: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
         ),
+        const SizedBox(height: 6),
+
+        // Activity cards
+        if (rows.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              border: Border.all(
+                  color: field.isRequired
+                      ? Colors.orange.shade200
+                      : Colors.grey.shade200),
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.grey.shade50,
+            ),
+            child: Center(
+              child: Text(
+                'No ${field.label.toLowerCase()} yet — tap "Add ${field.label}"',
+                style:
+                    TextStyle(fontSize: 12, color: Colors.grey.shade500),
+              ),
+            ),
+          )
+        else
+          for (var i = 0; i < rows.length; i++)
+            _buildActivityCard(field, i, rows[i]),
+      ],
+    );
+  }
+
+  Widget _buildActivityCard(
+    StepFieldDefinition field,
+    int index,
+    Map<String, TextEditingController> row,
+  ) {
+    final rows = widget.step.customActivityCtrls[field.name]!;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(10),
+        color: Colors.grey.shade50,
       ),
-      const SizedBox(height: 4),
-      Text(
-        'Enter the configuration for this custom step as a JSON object.',
-        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Card header
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: _orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${index + 1}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: _orange,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${field.label} ${index + 1} of ${rows.length}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const Spacer(),
+                // Move up
+                if (index > 0)
+                  _iconBtn(Icons.arrow_upward, 'Move up', () {
+                    setState(() {
+                      final moved =
+                          widget.step.customActivityCtrls[field.name]!
+                              .removeAt(index);
+                      widget.step.customActivityCtrls[field.name]!
+                          .insert(index - 1, moved);
+                    });
+                  }),
+                // Move down
+                if (index < rows.length - 1)
+                  _iconBtn(Icons.arrow_downward, 'Move down', () {
+                    setState(() {
+                      final moved =
+                          widget.step.customActivityCtrls[field.name]!
+                              .removeAt(index);
+                      widget.step.customActivityCtrls[field.name]!
+                          .insert(index + 1, moved);
+                    });
+                  }),
+                // Delete
+                _iconBtn(Icons.delete_outline, 'Remove', () {
+                  setState(() =>
+                      widget.step.removeCustomActivity(field.name, index));
+                }, color: Colors.red.shade400),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+
+          // Sub-fields
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: field.subFields.isEmpty
+                ? Text(
+                    'No sub-fields defined for "${field.label}" yet.',
+                    style:
+                        TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  )
+                : Column(
+                    children: [
+                      for (final sub in field.subFields)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _DynamicFieldInput(
+                            field: sub,
+                            controller: row[sub.name] ??
+                                TextEditingController(),
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+        ],
       ),
-      const SizedBox(height: 8),
-      TextFormField(
-        controller: step.customConfigCtrl,
-        decoration: const InputDecoration(
-          hintText: '{}',
-          border: OutlineInputBorder(),
-          alignLabelWithHint: true,
+    );
+  }
+
+  Widget _iconBtn(IconData icon, String tooltip, VoidCallback onTap,
+      {Color? color}) {
+    return IconButton(
+      icon: Icon(icon,
+          size: 16, color: color ?? Colors.grey.shade500),
+      tooltip: tooltip,
+      onPressed: onTap,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+    );
+  }
+}
+
+// ── Single dynamic field input ────────────────────────────────────────────────
+
+class _DynamicFieldInput extends StatefulWidget {
+  const _DynamicFieldInput({
+    required this.field,
+    required this.controller,
+  });
+
+  final StepFieldDefinition field;
+  final TextEditingController controller;
+
+  @override
+  State<_DynamicFieldInput> createState() => _DynamicFieldInputState();
+}
+
+class _DynamicFieldInputState extends State<_DynamicFieldInput> {
+  // Tracks whether the image/audio URL entered is non-empty for preview.
+  bool get _hasValue => widget.controller.text.trim().isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_rebuild);
+  }
+
+  void _rebuild() => setState(() {});
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_rebuild);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fieldType = widget.field.fieldType;
+    final label = widget.field.label;
+    final isRequired = widget.field.isRequired;
+    final hint = widget.field.hint;
+
+    switch (fieldType) {
+      case StepFieldType.imageUrl:
+        return _buildMediaField(
+          label: label,
+          isRequired: isRequired,
+          hint: hint ?? 'https://… (image URL)',
+          previewBuilder: _hasValue
+              ? () => Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.network(
+                        widget.controller.text.trim(),
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          height: 80,
+                          color: Colors.grey.shade100,
+                          child: Center(
+                            child: Text(
+                              'Invalid image URL',
+                              style: TextStyle(
+                                  fontSize: 11, color: Colors.grey.shade400),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+              : null,
+        );
+
+      case StepFieldType.audioUrl:
+        return _buildMediaField(
+          label: label,
+          isRequired: isRequired,
+          hint: hint ?? 'https://… (audio URL)',
+          suffixIcon: _hasValue
+              ? Tooltip(
+                  message: 'Audio URL entered',
+                  child: Icon(Icons.volume_up,
+                      size: 18, color: Colors.green.shade600),
+                )
+              : null,
+        );
+
+      case StepFieldType.text:
+        return TextFormField(
+          controller: widget.controller,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint ?? '',
+            border: const OutlineInputBorder(),
+            isDense: true,
+          ),
+          validator: isRequired
+              ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
+              : null,
+          maxLines: 3,
+          minLines: 1,
+        );
+
+      case StepFieldType.repeatingGroup:
+        // Repeating groups are rendered by _DynamicFieldsForm, never here.
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildMediaField({
+    required String label,
+    required bool isRequired,
+    required String hint,
+    Widget Function()? previewBuilder,
+    Widget? suffixIcon,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: widget.controller,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            border: const OutlineInputBorder(),
+            isDense: true,
+            suffixIcon: suffixIcon,
+          ),
+          validator: isRequired
+              ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
+              : null,
+          keyboardType: TextInputType.url,
         ),
-        maxLines: 6,
-        style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-      ),
-    ],
-  );
+        if (previewBuilder != null) previewBuilder(),
+      ],
+    );
+  }
 }

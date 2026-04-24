@@ -16,6 +16,7 @@ class ActivityActions {
   static const String lessonCreated = 'lesson_created';
   static const String lessonUpdated = 'lesson_updated';
   static const String lessonDeleted = 'lesson_deleted';
+  static const String lessonPublished = 'lesson_published';
 
   // Lesson quiz actions
   static const String lessonQuizCreated = 'lesson_quiz_created';

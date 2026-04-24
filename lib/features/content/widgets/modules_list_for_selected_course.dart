@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:milpress_dashboard/utils/app_colors.dart';
 
 import '../../modules/modules_repository.dart';
@@ -9,8 +10,6 @@ import '../../lesson_v2/lesson_v2_models.dart';
 import '../../assessment_v2/assessment_v2_repository.dart';
 import '../state/lessons_list_controller.dart';
 import '../../../widgets/app_button.dart';
-import 'lesson_steps/step_drafts.dart';
-import 'lesson_steps/step_type_form_sections.dart';
 
 class ModulesListForSelectedCourse extends ConsumerStatefulWidget {
   const ModulesListForSelectedCourse({super.key});
@@ -298,17 +297,26 @@ class _ModuleCard extends ConsumerWidget {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(4),
                               onTap: () async {
-                                final created = await showDialog<bool>(
-                                  context: context,
-                                  builder: (ctx) => _AddLessonDialog(
-                                    moduleId: module.id,
-                                    initialPosition: nextPosition,
-                                  ),
-                                );
-                                if (created == true) {
+                                final createdLessonId =
+                                    await showDialog<String>(
+                                      context: context,
+                                      builder: (ctx) => _AddLessonDialog(
+                                        moduleId: module.id,
+                                        initialPosition: nextPosition,
+                                      ),
+                                    );
+                                if (createdLessonId != null) {
                                   ref.invalidate(
                                     lessonsForModuleProvider(module.id),
                                   );
+                                  ref
+                                          .read(
+                                            selectedLessonIdProvider.notifier,
+                                          )
+                                          .state =
+                                      createdLessonId;
+                                  if (!context.mounted) return;
+                                  context.go('/lessons/$createdLessonId/steps');
                                 }
                               },
                               child: Padding(
@@ -373,175 +381,244 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
   late final TextEditingController _positionCtrl;
-  final List<StepDraft> _steps = [];
-  int _currentStep = 0;
   bool _submitting = false;
-  NewLesson? _createdLesson;
   LessonType _lessonType = LessonType.letter;
+
+  static const _orange = Color(0xFFE85D04);
+
   @override
   void initState() {
     super.initState();
     _positionCtrl = TextEditingController(
       text: widget.initialPosition.toString(),
     );
+    _titleCtrl.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _titleCtrl.dispose();
     _positionCtrl.dispose();
-    for (final step in _steps) {
-      step.dispose();
-    }
     super.dispose();
   }
 
+  bool get _step1Ready =>
+      _titleCtrl.text.trim().isNotEmpty &&
+      (int.tryParse(_positionCtrl.text.trim()) ?? 0) >= 1;
+
   @override
   Widget build(BuildContext context) {
+    final displayTitle = _titleCtrl.text.trim().isEmpty
+        ? 'New Lesson'
+        : _titleCtrl.text.trim();
+
     return Dialog(
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        width: 700,
+        width: 680,
         constraints: const BoxConstraints(maxHeight: 760),
-        padding: const EdgeInsets.all(24),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Add Lesson',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                  ),
-                ),
-                IconButton(
-                  onPressed: _submitting
-                      ? null
-                      : () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                  color: Colors.grey.shade600,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Stepper(
-                currentStep: _currentStep,
-                type: StepperType.horizontal,
-                controlsBuilder: (context, details) {
-                  final isLessonStep = _currentStep == 0;
-                  final isStepsStep = _currentStep == 1;
-                  final canBack = _currentStep > 0;
-                  final primaryLabel = isLessonStep
-                      ? (_createdLesson == null ? 'Create Lesson' : 'Continue')
-                      : 'Save Steps';
-                  return Row(
-                    children: [
-                      if (canBack)
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _submitting
-                                ? null
-                                : () => setState(() => _currentStep -= 1),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              side: const BorderSide(color: Color(0xFFE85D04)),
-                              foregroundColor: const Color(0xFFE85D04),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text('Back'),
+            // ── Header ──────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(28, 24, 20, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'NEW LESSON',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.2,
+                            color: Colors.grey.shade500,
                           ),
                         ),
-                      if (canBack) const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _submitting
-                              ? null
-                              : () async {
-                                  if (isLessonStep) {
-                                    await _createLesson();
-                                  } else if (isStepsStep) {
-                                    await _saveSteps();
-                                  }
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE85D04),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            elevation: 0,
+                        const SizedBox(height: 2),
+                        Text(
+                          displayTitle,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
                           ),
-                          child: _submitting
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : Text(
-                                  primaryLabel,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
-                  );
-                },
-                steps: [
-                  Step(
-                    title: const Text('Lesson'),
-                    isActive: _currentStep >= 0,
-                    content: _buildLessonForm(enabled: _createdLesson == null),
+                      ],
+                    ),
                   ),
-                  Step(
-                    title: const Text('Steps'),
-                    isActive: _currentStep >= 1,
-                    content: _buildStepsForm(),
+                  IconButton(
+                    onPressed: _submitting
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, size: 20),
+                    color: Colors.grey.shade500,
+                    splashRadius: 18,
                   ),
                 ],
               ),
             ),
+
+            const SizedBox(height: 20),
+
+            // ── Step indicator ──────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: _buildStepIndicator(),
+            ),
+
+            const SizedBox(height: 4),
+            Divider(color: Colors.grey.shade200, height: 1),
+
+            // ── Body ────────────────────────────────────────────────────
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
+                child: _buildLessonForm(),
+              ),
+            ),
+
+            // ── Footer ───────────────────────────────────────────────────
+            Divider(color: Colors.grey.shade200, height: 1),
+            _buildFooter(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildLessonForm({required bool enabled}) {
+  Widget _buildStepIndicator() {
+    return Row(
+      children: [
+        _StepChip(
+          stepNumber: 1,
+          label: 'Lesson details',
+          isActive: true,
+          isDone: false,
+          badge: _step1Ready ? 'Ready' : null,
+          badgeColor: const Color(0xFF22C55E),
+        ),
+        Expanded(
+          child: Container(
+            height: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            color: Colors.grey.shade300,
+          ),
+        ),
+        _StepChip(
+          stepNumber: 2,
+          label: 'Builder',
+          isActive: false,
+          isDone: false,
+          badge: null,
+          badgeColor: Colors.grey.shade600,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFooter() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 14, 20, 18),
+      child: Row(
+        children: [
+          // Status text
+          Icon(Icons.check_circle, size: 14, color: Colors.grey.shade500),
+          const SizedBox(width: 5),
+          Text(
+            'Ready to publish',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
+          Container(
+            width: 3,
+            height: 3,
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade400,
+              shape: BoxShape.circle,
+            ),
+          ),
+          Text(
+            'Draft autosaved',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          ),
+          const Spacer(),
+          // Cancel
+          TextButton(
+            onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey.shade700,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            child: const Text('Cancel'),
+          ),
+          const SizedBox(width: 8),
+          // Primary action
+          ElevatedButton(
+            onPressed: _submitting ? null : _createLesson,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _orange,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 0,
+            ),
+            child: _submitting
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Continue to builder',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.arrow_forward, size: 15),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLessonForm() {
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Lesson Title*',
+          // Lesson title field
+          Text(
+            'Lesson title *',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Colors.black,
+              color: Colors.grey.shade800,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           TextFormField(
             controller: _titleCtrl,
-            enabled: enabled,
             decoration: InputDecoration(
-              hintText: 'Enter lesson title',
+              hintText: 'e.g. Vowel /a/ — introduction',
               hintStyle: TextStyle(color: Colors.grey.shade400),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -551,12 +628,12 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.grey.shade300),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFE85D04)),
+              focusedBorder: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+                borderSide: BorderSide(color: _orange),
               ),
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
+                horizontal: 14,
                 vertical: 12,
               ),
             ),
@@ -564,28 +641,30 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
                 ? 'Lesson title is required'
                 : null,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
+
+          // Position + Lesson type row
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
+              // Position
+              SizedBox(
+                width: 110,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Position',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: Colors.black,
+                        color: Colors.grey.shade800,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     TextFormField(
                       controller: _positionCtrl,
-                      enabled: enabled,
                       decoration: InputDecoration(
-                        hintText: 'Enter position',
-                        hintStyle: TextStyle(color: Colors.grey.shade400),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -594,14 +673,12 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(color: Colors.grey.shade300),
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE85D04),
-                          ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(8)),
+                          borderSide: BorderSide(color: _orange),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
+                          horizontal: 14,
                           vertical: 12,
                         ),
                       ),
@@ -613,229 +690,53 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
                         return null;
                       },
                     ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Order within this module',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 24),
+
+              // Lesson type — pill buttons
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Lesson Type',
+                    Text(
+                      'Lesson type',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: Colors.black,
+                        color: Colors.grey.shade800,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<LessonType>(
-                      initialValue: _lessonType,
-                      decoration: InputDecoration(
-                        hintText: 'Select type',
-                        hintStyle: TextStyle(color: Colors.grey.shade400),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE85D04),
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
-                      items: LessonType.values
-                          .map(
-                            (type) => DropdownMenuItem(
-                              value: type,
-                              child: Text(type.name),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: enabled
-                          ? (value) {
-                              if (value != null) {
-                                setState(() {
-                                  _lessonType = value;
-                                });
-                              }
-                            }
-                          : null,
+                    const SizedBox(height: 6),
+                    _LessonTypePicker(
+                      selected: _lessonType,
+                      enabled: true,
+                      onChanged: (t) => setState(() => _lessonType = t),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          if (!enabled) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Lesson created. Add steps below.',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ],
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  Widget _buildStepsForm() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              'Lesson Steps',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const Spacer(),
-            TextButton.icon(
-              onPressed: _submitting ? null : _addStep,
-              icon: const Icon(Icons.add),
-              label: const Text('Add Step'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (_steps.isEmpty)
-          const Text('No steps added yet')
-        else
-          Column(
-            children: [
-              for (var i = 0; i < _steps.length; i++)
-                _buildStepCard(_steps[i], i),
-            ],
-          ),
-      ],
-    );
-  }
-
-  Widget _buildStepCard(StepDraft step, int index) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      elevation: 0,
-      color: Colors.grey.shade50,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Step ${index + 1}',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: index == 0
-                      ? null
-                      : () => _moveStep(index, index - 1),
-                  icon: const Icon(Icons.arrow_upward, size: 18),
-                  tooltip: 'Move up',
-                ),
-                IconButton(
-                  onPressed: index == _steps.length - 1
-                      ? null
-                      : () => _moveStep(index, index + 1),
-                  icon: const Icon(Icons.arrow_downward, size: 18),
-                  tooltip: 'Move down',
-                ),
-                IconButton(
-                  onPressed: () => _removeStep(index),
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  tooltip: 'Remove step',
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: step.stepKeyCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Step Key',
-                      hintText: 'e.g. sound, blend, trace…',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<LessonStepType>(
-                    initialValue: step.stepType,
-                    decoration: const InputDecoration(
-                      labelText: 'Step Type',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: LessonStepType.values
-                        .map(
-                          (type) => DropdownMenuItem(
-                            value: type,
-                            child: Text(type.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => step.setStepType(value));
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Row(
-                  children: [
-                    const Text('Required'),
-                    Switch(
-                      value: step.required,
-                      onChanged: (value) =>
-                          setState(() => step.required = value),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildStepTypeFields(step),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStepTypeFields(StepDraft step) {
-    return buildLessonStepTypeFields(
-      context: context,
-      step: step,
-      setState: setState,
-    );
-  }
-
   Future<void> _createLesson() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_createdLesson != null) {
-      setState(() => _currentStep = 1);
-      return;
-    }
     final title = _titleCtrl.text.trim();
     final pos = int.parse(_positionCtrl.text.trim());
     setState(() => _submitting = true);
@@ -849,12 +750,9 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
       final created = await ref
           .read(saveLessonProvider.notifier)
           .create(input, const []);
-      _createdLesson = created;
+      if (created == null) return;
       if (mounted) {
-        if (_steps.isEmpty) {
-          _addDefaultSteps(1);
-        }
-        setState(() => _currentStep = 1);
+        Navigator.of(context).pop(created.id);
       }
     } catch (e) {
       if (!mounted) return;
@@ -865,80 +763,170 @@ class _AddLessonDialogState extends ConsumerState<_AddLessonDialog> {
       if (mounted) setState(() => _submitting = false);
     }
   }
+}
 
-  Future<void> _saveSteps() async {
-    if (_createdLesson == null) return;
-    final error = _validateSteps();
-    if (error != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
-      return;
-    }
-    setState(() => _submitting = true);
-    try {
-      final inputs = _steps.map((s) => s.toInput()).toList();
-      await ref
-          .read(saveLessonProvider.notifier)
-          .updateSteps(_createdLesson!.id, inputs);
-      if (mounted) {
-        Navigator.of(context).pop(true);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to save steps: $e')));
-    } finally {
-      if (mounted) setState(() => _submitting = false);
+// ── Shared widgets ──────────────────────────────────────────────────────────
+
+class _StepChip extends StatelessWidget {
+  const _StepChip({
+    required this.stepNumber,
+    required this.label,
+    required this.isActive,
+    required this.isDone,
+    this.badge,
+    this.badgeColor,
+  });
+
+  final int stepNumber;
+  final String label;
+  final bool isActive;
+  final bool isDone;
+  final String? badge;
+  final Color? badgeColor;
+
+  static const _orange = Color(0xFFE85D04);
+
+  @override
+  Widget build(BuildContext context) {
+    final circleColor = isActive || isDone ? _orange : Colors.grey.shade300;
+    final textColor = isActive || isDone ? Colors.black : Colors.grey.shade500;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Circle
+        Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(color: circleColor, shape: BoxShape.circle),
+          alignment: Alignment.center,
+          child: isDone
+              ? const Icon(Icons.check, size: 14, color: Colors.white)
+              : Text(
+                  '$stepNumber',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+        ),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
+            ),
+            if (badge != null)
+              Text(
+                badge!,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: badgeColor ?? Colors.grey.shade500,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _LessonTypePicker extends StatelessWidget {
+  const _LessonTypePicker({
+    required this.selected,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final LessonType selected;
+  final bool enabled;
+  final ValueChanged<LessonType> onChanged;
+
+  static const _orange = Color(0xFFE85D04);
+
+  static String _label(LessonType t) {
+    switch (t) {
+      case LessonType.letter:
+        return 'Letter';
+      case LessonType.word:
+        return 'Word';
+      case LessonType.sentence:
+        return 'Sentence';
     }
   }
 
-  String? _validateSteps() {
-    if (_steps.isEmpty) {
-      return 'Add at least one step';
-    }
-    for (final step in _steps) {
-      final error = validateLessonStepDraft(step);
-      if (error != null) {
-        return error;
-      }
-    }
-    return null;
-  }
-
-  void _addStep() {
-    setState(() {
-      _steps.add(StepDraft(position: _steps.length + 1, stepKey: ''));
-    });
-  }
-
-  void _addDefaultSteps(int count) {
-    for (var i = 0; i < count; i++) {
-      _steps.add(StepDraft(position: _steps.length + 1, stepKey: ''));
+  static String _sublabel(LessonType t) {
+    switch (t) {
+      case LessonType.letter:
+        return 'Single-letter foc…';
+      case LessonType.word:
+        return 'Whole-word rea…';
+      case LessonType.sentence:
+        return 'Sentence-level';
     }
   }
 
-  void _removeStep(int index) {
-    setState(() {
-      _steps[index].dispose();
-      _steps.removeAt(index);
-      _reindexSteps();
-    });
-  }
-
-  void _moveStep(int from, int to) {
-    setState(() {
-      final step = _steps.removeAt(from);
-      _steps.insert(to, step);
-      _reindexSteps();
-    });
-  }
-
-  void _reindexSteps() {
-    for (var i = 0; i < _steps.length; i++) {
-      _steps[i].position = i + 1;
-    }
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: LessonType.values.map((type) {
+        final isSelected = type == selected;
+        return Expanded(
+          child: GestureDetector(
+            onTap: enabled ? () => onChanged(type) : null,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              margin: EdgeInsets.only(
+                right: type != LessonType.sentence ? 6 : 0,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFFFFF4EE) : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isSelected ? _orange : Colors.grey.shade300,
+                  width: isSelected ? 1.5 : 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _label(type),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? _orange : Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _sublabel(type),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isSelected
+                          ? _orange.withOpacity(0.75)
+                          : Colors.grey.shade500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 }
 

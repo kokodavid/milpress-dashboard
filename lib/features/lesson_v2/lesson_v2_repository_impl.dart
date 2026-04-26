@@ -120,4 +120,32 @@ class LessonV2RepositoryImpl implements LessonV2Repository {
         .filter('module_id', 'in', inList);
     return lessons.length;
   }
+
+  @override
+  Future<Map<String, String>> fetchLessonTitleMap(List<String> lessonIds) async {
+    if (lessonIds.isEmpty) return {};
+    final inList = '(${lessonIds.map((id) => '"$id"').join(',')})';
+    final List data = await _client
+        .from(lessonsTable)
+        .select('id, title')
+        .filter('id', 'in', inList);
+    return {
+      for (final row in data)
+        (row as Map)['id'] as String: (row['title'] as String? ?? ''),
+    };
+  }
+
+  @override
+  Future<List<String>> fetchLessonIdsForCourse(String courseId) async {
+    final List mods =
+        await _client.from('modules').select('id').eq('course_id', courseId);
+    if (mods.isEmpty) return [];
+    final moduleIds = mods.map((e) => (e as Map)['id']).toList();
+    final inList = '(${moduleIds.map((id) => '"$id"').join(',')})';
+    final List lessons = await _client
+        .from(lessonsTable)
+        .select('id')
+        .filter('module_id', 'in', inList);
+    return lessons.map((e) => (e as Map)['id'] as String).toList();
+  }
 }

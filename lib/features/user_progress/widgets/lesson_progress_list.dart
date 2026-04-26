@@ -1,53 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../lesson_v2/lesson_v2_repository.dart';
+import '../../lesson_v2/lesson_v2_repository.dart' show lessonTitleMapProvider, lessonIdsForCourseProvider;
 import '../user_progress_models.dart';
 import '../user_progress_repository.dart';
-import 'error_box.dart';
 import 'status_chip.dart';
 
-class LessonProgressList extends StatelessWidget {
+class LessonProgressList extends ConsumerWidget {
   final String userId;
-  final AsyncValue<List<LessonProgress>> lessonProgressAsync;
+  final List<LessonProgress> lessons;
   final String statusFilter; // 'all' | 'in_progress' | 'completed'
+  final String? courseFilter; // courseId to filter by, null = all courses
 
   const LessonProgressList({
     super.key,
     required this.userId,
-    required this.lessonProgressAsync,
+    required this.lessons,
     this.statusFilter = 'all',
+    this.courseFilter,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return lessonProgressAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => ErrorBox(message: 'Failed to load lesson progress: $e'),
-      data: (lessons) {
-        final filtered = lessons.where((l) {
-          if (statusFilter == 'completed') return l.isCompleted;
-          if (statusFilter == 'in_progress') return !l.isCompleted;
-          return true;
-        }).toList();
+  Widget build(BuildContext context, WidgetRef ref) {
+    // When a course is selected, resolve its lesson IDs and filter.
+    Set<String>? allowedIds;
+    if (courseFilter != null) {
+      final idsAsync = ref.watch(lessonIdsForCourseProvider(courseFilter!));
+      if (idsAsync.isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      allowedIds = idsAsync.valueOrNull?.toSet() ?? {};
+    }
 
-        if (filtered.isEmpty) {
-          return Center(
-            child: Text(
-              'No lesson progress found.',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          );
-        }
+    final filtered = lessons.where((l) {
+      if (allowedIds != null && !allowedIds.contains(l.lessonId)) return false;
+      if (statusFilter == 'completed') return l.isCompleted;
+      if (statusFilter == 'in_progress') return !l.isCompleted;
+      return true;
+    }).toList();
 
-        return ListView.separated(
-          padding: EdgeInsets.zero,
-          itemCount: filtered.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (context, index) {
-            final lp = filtered[index];
-            return _LessonRow(userId: userId, lp: lp);
-          },
-        );
+    if (filtered.isEmpty) {
+      return Center(
+        child: Text(
+          'No lesson progress found.',
+          style: TextStyle(color: Colors.grey[600]),
+        ),
+      );
+    }
+
+    // Build a single sorted key from all lesson IDs so the provider can be
+    // compared correctly by Riverpod and we fire exactly one DB query.
+    final sortedKey = (filtered.map((l) => l.lessonId).toList()..sort()).join(',');
+    final titlesAsync = ref.watch(lessonTitleMapProvider(sortedKey));
+
+    // Show a single spinner while titles are loading — no per-item loaders.
+    if (titlesAsync.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final titleMap = titlesAsync.valueOrNull ?? {};
+
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      itemCount: filtered.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final lp = filtered[index];
+        final title = titleMap[lp.lessonId]?.isNotEmpty == true
+            ? titleMap[lp.lessonId]!
+            : 'Lesson ${lp.lessonId.substring(0, 8)}…';
+        return _LessonRow(userId: userId, lp: lp, title: title);
       },
     );
   }
@@ -56,11 +77,11 @@ class LessonProgressList extends StatelessWidget {
 class _LessonRow extends ConsumerWidget {
   final String userId;
   final LessonProgress lp;
-  const _LessonRow({required this.userId, required this.lp});
+  final String title;
+  const _LessonRow({required this.userId, required this.lp, required this.title});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lessonAsync = ref.watch(lessonByIdProvider(lp.lessonId));
     final isCompleted = lp.isCompleted;
 
     return Container(
@@ -90,32 +111,19 @@ class _LessonRow extends ConsumerWidget {
           ),
           const SizedBox(width: 12),
 
-          // Lesson title
+          // Lesson title — already resolved, no async needed
           Expanded(
-            child: lessonAsync.when(
-              loading: () => const SizedBox(
-                height: 14,
-                width: 100,
-                child: LinearProgressIndicator(),
-              ),
-              error: (_, __) => Text(
-                'Lesson ${lp.lessonId.substring(0, 8)}…',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-              data: (lesson) => Text(
-                lesson != null && lesson.lesson.title.isNotEmpty
-                    ? lesson.lesson.title
-                    : 'Lesson ${lp.lessonId.substring(0, 8)}…',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+            child: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 12),
 
-          // Quiz score badge (if available)
-          if (lp.quizScore != null) ...[
+          // Attempt count badge (if available)
+          if (lp.attemptCount != null && lp.attemptCount! > 0) ...[
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -123,7 +131,7 @@ class _LessonRow extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                'Score ${lp.quizScore!.round()}',
+                '${lp.attemptCount} ${lp.attemptCount == 1 ? 'attempt' : 'attempts'}',
                 style: TextStyle(fontSize: 11, color: Colors.grey[700]),
               ),
             ),
@@ -167,20 +175,29 @@ class _LessonRow extends ConsumerWidget {
           TextButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
+              // Capture messenger before any async gap.
               final messenger = ScaffoldMessenger.of(context);
-              final success = await ref
-                  .read(deleteLessonProgressProvider.notifier)
-                  .delete(lp.id);
-
-              ref.invalidate(lessonProgressForUserProvider(userId));
-
-              messenger.showSnackBar(SnackBar(
-                content: Text(success
-                    ? 'Lesson progress removed.'
-                    : 'Failed to remove lesson progress.'),
-                backgroundColor:
-                    success ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-              ));
+              try {
+                // Call the repo directly — avoids autoDispose disposing the
+                // StateNotifier mid-flight when the dialog closes.
+                await ref
+                    .read(userProgressRepositoryProvider)
+                    .deleteLessonProgressById(
+                      lp.id,
+                      userId: userId,
+                      lessonId: lp.lessonId,
+                    );
+                messenger.showSnackBar(const SnackBar(
+                  content: Text('Lesson progress removed.'),
+                  backgroundColor: Color(0xFF10B981),
+                ));
+                ref.invalidate(lessonProgressForUserProvider(userId));
+              } catch (e) {
+                messenger.showSnackBar(SnackBar(
+                  content: Text('Failed to remove lesson progress: $e'),
+                  backgroundColor: const Color(0xFFDC2626),
+                ));
+              }
             },
             style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
             child: const Text('Remove'),

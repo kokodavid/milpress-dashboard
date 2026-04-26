@@ -24,6 +24,8 @@ abstract class LessonV2Repository {
   Future<void> reorderLessons(String moduleId, List<String> orderedLessonIds);
   Future<int> countLessons();
   Future<int> countLessonsForCourse(String courseId);
+  Future<List<String>> fetchLessonIdsForCourse(String courseId);
+  Future<Map<String, String>> fetchLessonTitleMap(List<String> lessonIds);
 }
 
 final lessonV2RepositoryProvider = Provider<LessonV2Repository>((ref) {
@@ -197,4 +199,20 @@ final lessonsCountForCourseProvider =
     FutureProvider.family<int, String>((ref, courseId) async {
   final repo = ref.watch(lessonV2RepositoryProvider);
   return repo.countLessonsForCourse(courseId);
+});
+
+final lessonIdsForCourseProvider =
+    FutureProvider.family<List<String>, String>((ref, courseId) async {
+  final repo = ref.watch(lessonV2RepositoryProvider);
+  return repo.fetchLessonIdsForCourse(courseId);
+});
+
+/// Fetches a title map for a set of lesson IDs in a single query.
+/// The key is the sorted, comma-joined IDs so Riverpod equality works correctly.
+final lessonTitleMapProvider =
+    FutureProvider.family<Map<String, String>, String>((ref, sortedIds) async {
+  if (sortedIds.isEmpty) return {};
+  final ids = sortedIds.split(',');
+  final repo = ref.watch(lessonV2RepositoryProvider);
+  return repo.fetchLessonTitleMap(ids);
 });

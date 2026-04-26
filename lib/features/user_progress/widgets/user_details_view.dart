@@ -6,6 +6,7 @@ import '../../../utils/app_colors.dart';
 import '../../assessment_v2/assessment_v2_repository.dart';
 import '../../assessment_v2/models/assessment_v2_progress_model.dart';
 import '../../auth/profiles_repository.dart';
+import '../../course/course_repository.dart';
 import '../user_progress_models.dart';
 import '../user_progress_repository.dart';
 import '../../assessment_v2/assessment_v2_repository.dart' show progressForUserProvider;
@@ -18,6 +19,7 @@ import 'assignment_progress_list.dart';
 // ─── tab index state (per-user so it resets when you switch users) ────────────
 final _tabIndexProvider = StateProvider.autoDispose<int>((ref) => 0);
 final _statusFilterProvider = StateProvider.autoDispose<String>((ref) => 'all');
+final _courseFilterProvider = StateProvider.autoDispose<String?>((ref) => null);
 
 class UserDetailsView extends ConsumerWidget {
   final String userId;
@@ -32,17 +34,31 @@ class UserDetailsView extends ConsumerWidget {
 
     final tabIndex = ref.watch(_tabIndexProvider);
     final statusFilter = ref.watch(_statusFilterProvider);
+    final courseFilter = ref.watch(_courseFilterProvider);
 
+    // Resolve profile first — it controls the header.
     return profileAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorBox(message: 'Failed to load user: $e'),
       data: (profile) {
         if (profile == null) return const Center(child: Text('User not found'));
 
-        // Count pills for each segment
-        final courseCount = courseProgressAsync.maybeWhen(data: (d) => d.length, orElse: () => 0);
-        final lessonCount = lessonProgressAsync.maybeWhen(data: (d) => d.length, orElse: () => 0);
-        final assignCount = assignmentProgressAsync.maybeWhen(data: (d) => d.length, orElse: () => 0);
+        // All three progress providers must be ready before we show any tab
+        // content. While any one is still loading we show a single centered
+        // spinner instead of per-item loaders scattered across the lists.
+        final isLoading = courseProgressAsync.isLoading ||
+            lessonProgressAsync.isLoading ||
+            assignmentProgressAsync.isLoading;
+
+        final loadError = courseProgressAsync.error ??
+            lessonProgressAsync.error ??
+            assignmentProgressAsync.error;
+
+        // Unwrap to plain lists (empty until data arrives, but we gate on
+        // isLoading above so the lists are only consumed once all are ready).
+        final courses = courseProgressAsync.valueOrNull ?? [];
+        final lessons = lessonProgressAsync.valueOrNull ?? [];
+        final assignments = assignmentProgressAsync.valueOrNull ?? [];
 
         return Padding(
           padding: const EdgeInsets.all(24.0),
@@ -138,24 +154,35 @@ class UserDetailsView extends ConsumerWidget {
 
               const SizedBox(height: 20),
 
-              // ── Segmented control + status filter ──────────────────────────
+              // ── Segmented control + filters ────────────────────────────────
               Row(
                 children: [
                   Expanded(
                     child: _SegmentedControl(
                       selectedIndex: tabIndex,
                       segments: [
-                        _Segment(label: 'Course progress', count: courseCount),
-                        _Segment(label: 'Lesson progress', count: lessonCount),
-                        _Segment(label: 'Assignment progress', count: assignCount),
+                        _Segment(label: 'Course progress', count: courses.length),
+                        _Segment(label: 'Lesson progress', count: lessons.length),
+                        _Segment(label: 'Assignment progress', count: assignments.length),
                       ],
                       onChanged: (i) {
                         ref.read(_tabIndexProvider.notifier).state = i;
                         ref.read(_statusFilterProvider.notifier).state = 'all';
+                        ref.read(_courseFilterProvider.notifier).state = null;
                       },
                     ),
                   ),
                   const SizedBox(width: 12),
+                  // Course filter — only visible on the Lesson progress tab
+                  if (tabIndex == 1 && courses.isNotEmpty) ...[
+                    _CourseFilterDropdown(
+                      courses: courses,
+                      value: courseFilter,
+                      onChanged: (v) =>
+                          ref.read(_courseFilterProvider.notifier).state = v,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   _StatusDropdown(
                     value: statusFilter,
                     onChanged: (v) => ref.read(_statusFilterProvider.notifier).state = v,
@@ -167,14 +194,19 @@ class UserDetailsView extends ConsumerWidget {
 
               // ── Content area ───────────────────────────────────────────────
               Expanded(
-                child: _buildContent(
-                  context,
-                  tabIndex: tabIndex,
-                  statusFilter: statusFilter,
-                  courseProgressAsync: courseProgressAsync,
-                  lessonProgressAsync: lessonProgressAsync,
-                  assignmentProgressAsync: assignmentProgressAsync,
-                ),
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : loadError != null
+                        ? ErrorBox(message: 'Failed to load progress: $loadError')
+                        : _buildContent(
+                            context,
+                            tabIndex: tabIndex,
+                            statusFilter: statusFilter,
+                            courseFilter: courseFilter,
+                            courses: courses,
+                            lessons: lessons,
+                            assignments: assignments,
+                          ),
               ),
             ],
           ),
@@ -187,28 +219,30 @@ class UserDetailsView extends ConsumerWidget {
     BuildContext context, {
     required int tabIndex,
     required String statusFilter,
-    required AsyncValue<List<CourseProgress>> courseProgressAsync,
-    required AsyncValue<List<LessonProgress>> lessonProgressAsync,
-    required AsyncValue<List<AssessmentV2Progress>> assignmentProgressAsync,
+    required String? courseFilter,
+    required List<CourseProgress> courses,
+    required List<LessonProgress> lessons,
+    required List<AssessmentV2Progress> assignments,
   }) {
     switch (tabIndex) {
       case 1:
         return LessonProgressList(
           userId: userId,
-          lessonProgressAsync: lessonProgressAsync,
+          lessons: lessons,
           statusFilter: statusFilter,
+          courseFilter: courseFilter,
         );
       case 2:
         return AssignmentProgressList(
-          assignmentProgressAsync: assignmentProgressAsync,
+          assignments: assignments,
           statusFilter: statusFilter,
         );
       default:
         return CourseProgressList(
           userId: userId,
-          courseProgressAsync: courseProgressAsync,
-          lessonProgressAsync: lessonProgressAsync,
-          assignmentProgressAsync: assignmentProgressAsync,
+          courses: courses,
+          allLessonProgress: lessons,
+          assignments: assignments,
           statusFilter: statusFilter,
         );
     }
@@ -359,6 +393,70 @@ class _SegmentedControl extends StatelessWidget {
             ),
           );
         }),
+      ),
+    );
+  }
+}
+
+// ─── Course filter dropdown (lesson tab only) ─────────────────────────────────
+
+class _CourseFilterDropdown extends ConsumerWidget {
+  final List<CourseProgress> courses;
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  const _CourseFilterDropdown({
+    required this.courses,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Resolve course titles — courseByIdProvider is typically cached from the
+    // Course progress tab having already fetched them.
+    final items = courses.map((cp) {
+      final courseAsync = ref.watch(courseByIdProvider(cp.courseId));
+      final title = courseAsync.maybeWhen(
+        data: (c) => c?.title.isNotEmpty == true ? c!.title : 'Course…',
+        orElse: () => 'Loading…',
+      );
+      return (cp.courseId, title);
+    }).toList();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: value != null ? AppColors.primaryColor.withValues(alpha: .5) : Colors.grey.shade200,
+        ),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          value: value,
+          isDense: true,
+          hint: const Text(
+            'All courses',
+            style: TextStyle(fontSize: 13, color: Colors.black87),
+          ),
+          style: const TextStyle(fontSize: 13, color: Colors.black87),
+          items: [
+            const DropdownMenuItem<String?>(
+              value: null,
+              child: Text('All courses'),
+            ),
+            ...items.map((item) => DropdownMenuItem<String?>(
+                  value: item.$1,
+                  child: Text(
+                    item.$2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                )),
+          ],
+          onChanged: onChanged,
+        ),
       ),
     );
   }

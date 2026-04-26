@@ -11,70 +11,53 @@ import 'donut_chart.dart';
 import 'error_box.dart';
 import 'status_chip.dart';
 
-class CourseProgressList extends ConsumerWidget {
+class CourseProgressList extends StatelessWidget {
   final String userId;
-  final AsyncValue<List<CourseProgress>> courseProgressAsync;
-  final AsyncValue<List<LessonProgress>> lessonProgressAsync;
-  final AsyncValue<List<AssessmentV2Progress>> assignmentProgressAsync;
+  final List<CourseProgress> courses;
+  final List<LessonProgress> allLessonProgress;
+  final List<AssessmentV2Progress> assignments;
   final String statusFilter; // 'all' | 'in_progress' | 'completed'
 
   const CourseProgressList({
     super.key,
     required this.userId,
-    required this.courseProgressAsync,
-    required this.lessonProgressAsync,
-    required this.assignmentProgressAsync,
+    required this.courses,
+    required this.allLessonProgress,
+    required this.assignments,
     this.statusFilter = 'all',
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return courseProgressAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => ErrorBox(message: 'Failed to load course progress: $e'),
-      data: (courses) {
-        // Group lesson progress by courseProgressId
-        final lessonsByCourse = <String, List<LessonProgress>>{};
-        lessonProgressAsync.whenData((lessons) {
-          for (final l in lessons) {
-            final key = l.courseProgressId ?? '';
-            lessonsByCourse.putIfAbsent(key, () => []).add(l);
-          }
-        });
+  Widget build(BuildContext context) {
+    final filtered = courses.where((cp) {
+      final done = cp.isCompleted == true;
+      if (statusFilter == 'completed') return done;
+      if (statusFilter == 'in_progress') return !done;
+      return true;
+    }).toList();
 
-        // Apply status filter
-        final filtered = courses.where((cp) {
-          final done = cp.isCompleted == true;
-          if (statusFilter == 'completed') return done;
-          if (statusFilter == 'in_progress') return !done;
-          return true;
-        }).toList();
+    if (filtered.isEmpty) {
+      return Center(
+        child: Text(
+          statusFilter == 'all'
+              ? 'No course progress yet.'
+              : 'No ${statusFilter == 'completed' ? 'completed' : 'in-progress'} courses.',
+          style: TextStyle(color: Colors.grey[600]),
+        ),
+      );
+    }
 
-        if (filtered.isEmpty) {
-          return Center(
-            child: Text(
-              statusFilter == 'all'
-                  ? 'No course progress yet.'
-                  : 'No ${statusFilter == 'completed' ? 'completed' : 'in-progress'} courses.',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          );
-        }
-
-        return ListView.separated(
-          padding: EdgeInsets.zero,
-          itemCount: filtered.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final cp = filtered[index];
-            final courseLessons = lessonsByCourse[cp.id] ?? [];
-            return _CourseCard(
-              userId: userId,
-              cp: cp,
-              courseLessons: courseLessons,
-              assignmentProgressAsync: assignmentProgressAsync,
-            );
-          },
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      itemCount: filtered.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final cp = filtered[index];
+        return _CourseCard(
+          userId: userId,
+          cp: cp,
+          allLessonProgress: allLessonProgress,
+          assignments: assignments,
         );
       },
     );
@@ -88,38 +71,44 @@ class CourseProgressList extends ConsumerWidget {
 class _CourseCard extends ConsumerWidget {
   final String userId;
   final CourseProgress cp;
-  final List<LessonProgress> courseLessons;
-  final AsyncValue<List<AssessmentV2Progress>> assignmentProgressAsync;
+  final List<LessonProgress> allLessonProgress;
+  final List<AssessmentV2Progress> assignments;
 
   const _CourseCard({
     required this.userId,
     required this.cp,
-    required this.courseLessons,
-    required this.assignmentProgressAsync,
+    required this.allLessonProgress,
+    required this.assignments,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final courseAsync = ref.watch(courseByIdProvider(cp.courseId));
     final lessonsTotalAsync = ref.watch(lessonsCountForCourseProvider(cp.courseId));
+    final lessonIdsAsync = ref.watch(lessonIdsForCourseProvider(cp.courseId));
     final assessmentAsync = ref.watch(assessmentByCourseIdProvider(cp.courseId));
 
-    final completedLessons = courseLessons.where((l) => l.isCompleted).length;
-    final totalLessonsFromRepo = lessonsTotalAsync.maybeWhen(data: (v) => v, orElse: () => null);
-    final totalLessons = totalLessonsFromRepo ?? courseLessons.length;
+    // Cross-reference all user completions with the lesson IDs that belong
+    // to this course — lesson_completion has no course_progress_id column.
+    final courseLessonIds = lessonIdsAsync.maybeWhen(
+      data: (ids) => ids.toSet(),
+      orElse: () => <String>{},
+    );
+    final completedLessons = allLessonProgress
+        .where((l) => courseLessonIds.contains(l.lessonId) && l.isCompleted)
+        .length;
+    final totalLessons = lessonsTotalAsync.maybeWhen(data: (v) => v, orElse: () => 0);
 
     final lessonPercent = totalLessons > 0 ? (completedLessons / totalLessons).clamp(0.0, 1.0) : 0.0;
 
-    // Assignment counts for this course
+    // Assignment counts for this course (plain list — no async needed).
     int totalAssignments = 0;
     int passedAssignments = 0;
     assessmentAsync.whenData((assessment) {
       if (assessment != null) {
-        assignmentProgressAsync.whenData((all) {
-          final forThisCourse = all.where((a) => a.assessmentId == assessment.id).toList();
-          totalAssignments = forThisCourse.length;
-          passedAssignments = forThisCourse.where((a) => a.isPassed).length;
-        });
+        final forThisCourse = assignments.where((a) => a.assessmentId == assessment.id).toList();
+        totalAssignments = forThisCourse.length;
+        passedAssignments = forThisCourse.where((a) => a.isPassed).length;
       }
     });
 
@@ -210,6 +199,7 @@ class _CourseCard extends ConsumerWidget {
               const SizedBox(width: 8),
               _DeleteCourseButton(
                 userId: userId,
+                courseId: cp.courseId,
                 courseProgressId: cp.id,
               ),
             ],
@@ -245,10 +235,12 @@ class _CourseCard extends ConsumerWidget {
 
 class _DeleteCourseButton extends ConsumerWidget {
   final String userId;
+  final String courseId;
   final String courseProgressId;
 
   const _DeleteCourseButton({
     required this.userId,
+    required this.courseId,
     required this.courseProgressId,
   });
 
@@ -285,21 +277,27 @@ class _DeleteCourseButton extends ConsumerWidget {
             onPressed: () async {
               Navigator.of(ctx).pop();
               final messenger = ScaffoldMessenger.of(context);
-              final success = await ref
-                  .read(deleteCourseProgressProvider.notifier)
-                  .delete(courseProgressId);
-
-              ref.invalidate(courseProgressForUserProvider(userId));
-              ref.invalidate(lessonProgressForUserProvider(userId));
-              ref.invalidate(moduleProgressForUserProvider(userId));
-
-              messenger.showSnackBar(SnackBar(
-                content: Text(success
-                    ? 'Course progress removed.'
-                    : 'Failed to remove course progress.'),
-                backgroundColor:
-                    success ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-              ));
+              try {
+                await ref
+                    .read(userProgressRepositoryProvider)
+                    .deleteCourseProgressById(
+                      courseProgressId,
+                      userId: userId,
+                      courseId: courseId,
+                    );
+                messenger.showSnackBar(const SnackBar(
+                  content: Text('Course progress removed.'),
+                  backgroundColor: Color(0xFF10B981),
+                ));
+                ref.invalidate(courseProgressForUserProvider(userId));
+                ref.invalidate(lessonProgressForUserProvider(userId));
+                ref.invalidate(moduleProgressForUserProvider(userId));
+              } catch (e) {
+                messenger.showSnackBar(SnackBar(
+                  content: Text('Failed to remove course progress: $e'),
+                  backgroundColor: const Color(0xFFDC2626),
+                ));
+              }
             },
             style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
             child: const Text('Remove'),

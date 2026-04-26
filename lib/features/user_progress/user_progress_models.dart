@@ -106,50 +106,40 @@ class ModuleProgress {
 
 @immutable
 class LessonProgress {
-  final String id;
+  // lesson_completion has no surrogate id — PK is (user_id, lesson_id)
   final String userId;
   final String lessonId;
-  final String? courseProgressId;
-  final String? status;
-  final DateTime? startedAt;
+  final String? courseProgressId; // kept for course grouping logic
   final DateTime? completedAt;
-  final double? videoProgress; // 0.0 - 1.0
-  final double? quizScore; // 0 - 100?
-  final DateTime? quizAttemptedAt;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
+  final int? attemptCount;
+  final DateTime? lastAttemptAt;
 
   const LessonProgress({
-    required this.id,
     required this.userId,
     required this.lessonId,
     this.courseProgressId,
-    this.status,
-    this.startedAt,
     this.completedAt,
-    this.videoProgress,
-    this.quizScore,
-    this.quizAttemptedAt,
-    this.createdAt,
-    this.updatedAt,
+    this.attemptCount,
+    this.lastAttemptAt,
   });
 
-  bool get isCompleted => completedAt != null || status == 'completed' || status == 'done';
+  /// No surrogate id in this table — always empty.
+  /// Deletion falls back to (user_id, lesson_id) composite.
+  String get id => '';
+
+  bool get isCompleted => completedAt != null;
+
+  /// No quiz_score column in lesson_completion — always null.
+  double? get quizScore => null;
 
   factory LessonProgress.fromMap(Map<String, dynamic> map) {
     return LessonProgress(
-      id: (map['id'] ?? '') as String,
       userId: (map['user_id'] ?? map['auth_user_id'] ?? '') as String,
       lessonId: (map['lesson_id'] ?? '') as String,
       courseProgressId: map['course_progress_id'] as String?,
-      status: map['status'] as String?,
-      startedAt: _dt(map['started_at']),
       completedAt: _dt(map['completed_at']),
-      videoProgress: (map['video_progress'] as num?)?.toDouble(),
-      quizScore: (map['quiz_score'] as num?)?.toDouble(),
-      quizAttemptedAt: _dt(map['quiz_attempted_at']),
-      createdAt: _dt(map['created_at']),
-      updatedAt: _dt(map['updated_at']),
+      attemptCount: map['attempt_count'] as int?,
+      lastAttemptAt: _dt(map['last_attempt_at']),
     );
   }
 }

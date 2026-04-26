@@ -1,49 +1,41 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../assessment_v2/models/assessment_v2_progress_model.dart';
-import 'error_box.dart';
 import 'status_chip.dart';
 
 class AssignmentProgressList extends StatelessWidget {
-  final AsyncValue<List<AssessmentV2Progress>> assignmentProgressAsync;
+  final List<AssessmentV2Progress> assignments;
   final String statusFilter; // 'all' | 'in_progress' | 'completed'
 
   const AssignmentProgressList({
     super.key,
-    required this.assignmentProgressAsync,
+    required this.assignments,
     this.statusFilter = 'all',
   });
 
   @override
   Widget build(BuildContext context) {
-    return assignmentProgressAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => ErrorBox(message: 'Failed to load assignment progress: $e'),
-      data: (assignments) {
-        final filtered = assignments.where((a) {
-          if (statusFilter == 'completed') return a.isPassed;
-          if (statusFilter == 'in_progress') return !a.isPassed;
-          return true;
-        }).toList();
+    final filtered = assignments.where((a) {
+      if (statusFilter == 'completed') return a.isPassed;
+      if (statusFilter == 'in_progress') return !a.isPassed;
+      return true;
+    }).toList();
 
-        if (filtered.isEmpty) {
-          return Center(
-            child: Text(
-              'No assignment progress found.',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          );
-        }
+    if (filtered.isEmpty) {
+      return Center(
+        child: Text(
+          'No assignment progress found.',
+          style: TextStyle(color: Colors.grey[600]),
+        ),
+      );
+    }
 
-        return ListView.separated(
-          padding: EdgeInsets.zero,
-          itemCount: filtered.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (context, index) {
-            final ap = filtered[index];
-            return _AssignmentRow(ap: ap);
-          },
-        );
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      itemCount: filtered.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final ap = filtered[index];
+        return _AssignmentRow(ap: ap);
       },
     );
   }

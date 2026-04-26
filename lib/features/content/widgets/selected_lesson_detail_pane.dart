@@ -215,8 +215,9 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                     for (final entry in steps.asMap().entries)
                       StepCard(
                         step: entry.value,
-                        onEdit: () =>
-                            editStep(context, ref, lesson.id, steps, entry.key),
+                        onEdit: () => context.go(
+                          '/lessons/${lesson.id}/steps?step=${entry.key}',
+                        ),
                         onDelete: () => deleteStep(
                           context,
                           ref,

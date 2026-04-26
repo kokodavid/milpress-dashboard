@@ -1,299 +1,366 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../utils/app_colors.dart';
+import '../../assessment_v2/assessment_v2_repository.dart';
+import '../../assessment_v2/models/assessment_v2_progress_model.dart';
 import '../../course/course_repository.dart';
-import '../../modules/modules_repository.dart';
 import '../../lesson_v2/lesson_v2_repository.dart';
 import '../user_progress_models.dart';
-import 'status_chip.dart';
-import 'percentage_label.dart';
-import 'progress_bar.dart';
+import '../user_progress_repository.dart';
+import 'donut_chart.dart';
 import 'error_box.dart';
-
-final expandedCoursesProvider = StateProvider<Set<String>>((ref) => <String>{});
+import 'status_chip.dart';
 
 class CourseProgressList extends ConsumerWidget {
+  final String userId;
   final AsyncValue<List<CourseProgress>> courseProgressAsync;
-  final AsyncValue<List<ModuleProgress>> moduleProgressAsync;
   final AsyncValue<List<LessonProgress>> lessonProgressAsync;
+  final AsyncValue<List<AssessmentV2Progress>> assignmentProgressAsync;
+  final String statusFilter; // 'all' | 'in_progress' | 'completed'
+
   const CourseProgressList({
     super.key,
+    required this.userId,
     required this.courseProgressAsync,
-    required this.moduleProgressAsync,
     required this.lessonProgressAsync,
+    required this.assignmentProgressAsync,
+    this.statusFilter = 'all',
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final expanded = ref.watch(expandedCoursesProvider);
     return courseProgressAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorBox(message: 'Failed to load course progress: $e'),
       data: (courses) {
-        final modulesByCourse = moduleProgressAsync.maybeWhen(
-          data: (mods) => _groupBy<String, ModuleProgress>(mods, (m) => m.courseProgressId ?? ''),
-          orElse: () => <String, List<ModuleProgress>>{},
-        );
-        final inProgress = courses.where((c) => c.isCompleted != true).toList();
-        if (inProgress.isEmpty) {
-          return const Center(child: Text('No course in progress'));
-        }
-        const threshold = 0.05;
-        CourseProgress? selected;
-        double selectedPercent = -1;
-        double percentFor(CourseProgress cp) {
-          final modules = modulesByCourse[cp.id] ?? const [];
-          final totalLessons = modules.fold<int>(0, (sum, m) => sum + (m.totalLessons ?? 0));
-          final completedLessons = modules.fold<int>(0, (sum, m) => sum + (m.completedLessons ?? 0));
-          if (totalLessons <= 0) return 0;
-          return (completedLessons / totalLessons).clamp(0.0, 1.0);
-        }
-        for (final cp in inProgress) {
-          final p = percentFor(cp);
-          if (p >= threshold && p > selectedPercent) {
-            selected = cp;
-            selectedPercent = p;
+        // Group lesson progress by courseProgressId
+        final lessonsByCourse = <String, List<LessonProgress>>{};
+        lessonProgressAsync.whenData((lessons) {
+          for (final l in lessons) {
+            final key = l.courseProgressId ?? '';
+            lessonsByCourse.putIfAbsent(key, () => []).add(l);
           }
+        });
+
+        // Apply status filter
+        final filtered = courses.where((cp) {
+          final done = cp.isCompleted == true;
+          if (statusFilter == 'completed') return done;
+          if (statusFilter == 'in_progress') return !done;
+          return true;
+        }).toList();
+
+        if (filtered.isEmpty) {
+          return Center(
+            child: Text(
+              statusFilter == 'all'
+                  ? 'No course progress yet.'
+                  : 'No ${statusFilter == 'completed' ? 'completed' : 'in-progress'} courses.',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          );
         }
-        if (selected == null) {
-          for (final cp in inProgress) {
-            final p = percentFor(cp);
-            if (p > 0 && p > selectedPercent) {
-              selected = cp;
-              selectedPercent = p;
-            }
-          }
-        }
-        if (selected == null) {
-          return const Center(child: Text('No notable course progress yet'));
-        }
+
         return ListView.separated(
-          itemCount: 1,
+          padding: EdgeInsets.zero,
+          itemCount: filtered.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            final cp = selected!;
-            final List<ModuleProgress> modules = List<ModuleProgress>.from(
-              modulesByCourse[cp.id] ?? const [],
-            )
-              ..sort((a, b) {
-                final aTotal = a.totalLessons ?? 0;
-                final bTotal = b.totalLessons ?? 0;
-                final aCompleted = a.completedLessons ?? 0;
-                final bCompleted = b.completedLessons ?? 0;
-                final aRatio = aTotal > 0 ? aCompleted / aTotal : 0.0;
-                final bRatio = bTotal > 0 ? bCompleted / bTotal : 0.0;
-                final cmp = aRatio.compareTo(bRatio);
-                if (cmp != 0) return cmp; // lower progress first
-                final aDone = (a.status == 'completed');
-                final bDone = (b.status == 'completed');
-                if (aDone != bDone) return aDone ? 1 : -1;
-                return (a.moduleId).compareTo(b.moduleId);
-              });
-            final completedLessons = modules.fold<int>(0, (sum, m) => sum + (m.completedLessons ?? 0));
-            final completedModules = modules.where((m) => m.status == 'completed').length;
-            final modulesCountAsync = ref.watch(modulesCountForCourseProvider(cp.courseId));
-            final lessonsCountAsync = ref.watch(lessonsCountForCourseProvider(cp.courseId));
-            final int computedLessonTotal = modules.fold<int>(0, (sum, m) => sum + (m.totalLessons ?? 0));
-            final int? repoLessonTotal = lessonsCountAsync.maybeWhen(data: (v) => v, orElse: () => null);
-            final int totalLessons = repoLessonTotal ?? computedLessonTotal;
-            final int computedModuleTotal = modules.length;
-            final int? repoModuleTotal = modulesCountAsync.maybeWhen(data: (v) => v, orElse: () => null);
-            final int totalModules = repoModuleTotal ?? computedModuleTotal;
-            double percent = 0;
-            if (totalLessons > 0) {
-              percent = (completedLessons / totalLessons).clamp(0.0, 1.0);
-            } else if (cp.isCompleted == true) {
-              percent = 1.0;
-            }
-            final double modulePercent = totalModules > 0 ? (completedModules / totalModules).clamp(0.0, 1.0) : 0.0;
-            final bool courseCompleted = totalLessons > 0 && completedLessons >= totalLessons;
-            final isExpanded = expanded.contains(cp.id);
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 4, offset: const Offset(0,1)),
-                ],
-              ),
-              child: Column(
-                children: [
-                  InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () {
-                      final current = ref.read(expandedCoursesProvider.notifier).state;
-                      final copy = Set<String>.from(current);
-                      if (copy.contains(cp.id)) {
-                        copy.remove(cp.id);
-                      } else {
-                        copy.add(cp.id);
-                      }
-                      ref.read(expandedCoursesProvider.notifier).state = copy;
-                    },
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(16,16,16, isExpanded ? 0 : 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Builder(
-                                  builder: (context) {
-                                    final courseAsync = ref.watch(courseByIdProvider(cp.courseId));
-                                    return courseAsync.when(
-                                      loading: () => Text(
-                                        'Loading course...',
-                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, fontStyle: FontStyle.italic, color: Colors.grey.shade600),
-                                      ),
-                                      error: (e, _) => Text(
-                                        'Course',
-                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                                      ),
-                                      data: (course) => Text(
-                                        course != null && course.title.isNotEmpty
-                                            ? course.title
-                                            : 'Course ${cp.courseId.substring(0, 8)}',
-                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              StatusChip(label: courseCompleted ? 'Completed' : 'In Progress', completed: courseCompleted),
-                              const SizedBox(width: 12),
-                              AnimatedRotation(
-                                duration: const Duration(milliseconds: 180),
-                                turns: isExpanded ? 0.5 : 0,
-                                child: const Icon(Icons.keyboard_arrow_down, size: 24),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          PercentageLabel(percent: modulePercent),
-                          const SizedBox(height: 6),
-                          ProgressBar(value: percent),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (isExpanded && modules.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16,12,16,16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Modules Progress', style: Theme.of(context).textTheme.labelLarge),
-                          const SizedBox(height: 12),
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: modules.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
-                            itemBuilder: (context, mIndex) {
-                              final m = modules[mIndex];
-                              return Container(
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: Colors.grey.shade200),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 14,
-                                          backgroundColor: AppColors.copBlue,
-                                          child: Text('${mIndex+1}', style: const TextStyle(color: Colors.white,fontWeight: FontWeight.w600,fontSize: 12)),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Builder(
-                                            builder: (context) {
-                                              final moduleAsync = ref.watch(moduleByIdProvider(m.moduleId));
-                                              return moduleAsync.when(
-                                                loading: () => Text('Loading module...', style: TextStyle(fontSize: 15, fontStyle: FontStyle.italic, color: Colors.grey.shade600)),
-                                                error: (e, _) => const Text('Module', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                                                data: (mod) => Text(
-                                                  mod != null && (mod.description?.isNotEmpty ?? false)
-                                                      ? mod.description!
-                                                      : 'Module ${m.moduleId.substring(0,8)}',
-                                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                        Builder(
-                                          builder: (context) {
-                                            final lessonsAsync = ref.watch(lessonsForModuleProvider(m.moduleId));
-                                            final totalLessonsInModule = lessonsAsync.maybeWhen(
-                                              data: (ls) => ls.length,
-                                              orElse: () => m.totalLessons ?? 0,
-                                            );
-                                            final completedLessonsInModule = ((m.completedLessons ?? 0) > totalLessonsInModule)
-                                                ? totalLessonsInModule
-                                                : (m.completedLessons ?? 0);
-                                            final moduleDone = totalLessonsInModule > 0 && completedLessonsInModule >= totalLessonsInModule;
-                                            return StatusChip(label: moduleDone ? 'Completed' : 'In Progress', completed: moduleDone);
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Builder(
-                                      builder: (context) {
-                                        final lessonsAsync = ref.watch(lessonsForModuleProvider(m.moduleId));
-                                        final totalLessonsInModule = lessonsAsync.maybeWhen(
-                                          data: (ls) => ls.length,
-                                          orElse: () => m.totalLessons ?? 0,
-                                        );
-                                        final completedLessonsInModule = ((m.completedLessons ?? 0) > totalLessonsInModule)
-                                            ? totalLessonsInModule
-                                            : (m.completedLessons ?? 0);
-                                        return Row(
-                                          children: [
-                                            Icon(Icons.circle, size: 10, color: Colors.grey.shade500),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              '$completedLessonsInModule of $totalLessonsInModule Lessons',
-                                              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
+            final cp = filtered[index];
+            final courseLessons = lessonsByCourse[cp.id] ?? [];
+            return _CourseCard(
+              userId: userId,
+              cp: cp,
+              courseLessons: courseLessons,
+              assignmentProgressAsync: assignmentProgressAsync,
             );
           },
         );
       },
     );
   }
+}
 
-  Map<K, List<V>> _groupBy<K, V>(List<V> items, K Function(V) keySelector) {
-    final map = <K, List<V>>{};
-    for (final item in items) {
-      final key = keySelector(item);
-      map.putIfAbsent(key, () => []).add(item);
+// ---------------------------------------------------------------------------
+// Individual course card
+// ---------------------------------------------------------------------------
+
+class _CourseCard extends ConsumerWidget {
+  final String userId;
+  final CourseProgress cp;
+  final List<LessonProgress> courseLessons;
+  final AsyncValue<List<AssessmentV2Progress>> assignmentProgressAsync;
+
+  const _CourseCard({
+    required this.userId,
+    required this.cp,
+    required this.courseLessons,
+    required this.assignmentProgressAsync,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final courseAsync = ref.watch(courseByIdProvider(cp.courseId));
+    final lessonsTotalAsync = ref.watch(lessonsCountForCourseProvider(cp.courseId));
+    final assessmentAsync = ref.watch(assessmentByCourseIdProvider(cp.courseId));
+
+    final completedLessons = courseLessons.where((l) => l.isCompleted).length;
+    final totalLessonsFromRepo = lessonsTotalAsync.maybeWhen(data: (v) => v, orElse: () => null);
+    final totalLessons = totalLessonsFromRepo ?? courseLessons.length;
+
+    final lessonPercent = totalLessons > 0 ? (completedLessons / totalLessons).clamp(0.0, 1.0) : 0.0;
+
+    // Assignment counts for this course
+    int totalAssignments = 0;
+    int passedAssignments = 0;
+    assessmentAsync.whenData((assessment) {
+      if (assessment != null) {
+        assignmentProgressAsync.whenData((all) {
+          final forThisCourse = all.where((a) => a.assessmentId == assessment.id).toList();
+          totalAssignments = forThisCourse.length;
+          passedAssignments = forThisCourse.where((a) => a.isPassed).length;
+        });
+      }
+    });
+
+    final bool isCompleted = cp.isCompleted == true;
+
+    // Determine donut color by status
+    final donutColor = isCompleted ? const Color(0xFF10B981) : AppColors.primaryColor;
+
+    // Started date label
+    String startedLabel = '';
+    if (cp.startedAt != null) {
+      final d = cp.startedAt!;
+      startedLabel =
+          'Started ${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
     }
-    return map;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(8),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row: donut + title/date + status chip
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              DonutChart(
+                value: isCompleted ? 1.0 : lessonPercent,
+                color: donutColor,
+                size: 60,
+                strokeWidth: 7,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Course title
+                    courseAsync.when(
+                      loading: () => const SizedBox(
+                        height: 16,
+                        width: 120,
+                        child: LinearProgressIndicator(),
+                      ),
+                      error: (_, __) => Text(
+                        'Course ${cp.courseId.substring(0, 8)}…',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      data: (course) => Text(
+                        course != null && course.title.isNotEmpty
+                            ? course.title
+                            : 'Course ${cp.courseId.substring(0, 8)}…',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (startedLabel.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        startedLabel,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              StatusChip(
+                label: isCompleted ? 'Completed' : 'In progress',
+                completed: isCompleted,
+              ),
+              const SizedBox(width: 8),
+              _DeleteCourseButton(
+                userId: userId,
+                courseProgressId: cp.id,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0xFFF0F0F0)),
+          const SizedBox(height: 12),
+
+          // Dual progress rails
+          _ProgressRail(
+            label: 'Lessons',
+            completed: completedLessons,
+            total: totalLessons,
+            color: AppColors.primaryColor,
+          ),
+          const SizedBox(height: 10),
+          _ProgressRail(
+            label: 'Assignments',
+            completed: passedAssignments,
+            total: totalAssignments,
+            color: const Color(0xFF142C44),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Delete course progress button
+// ---------------------------------------------------------------------------
+
+class _DeleteCourseButton extends ConsumerWidget {
+  final String userId;
+  final String courseProgressId;
+
+  const _DeleteCourseButton({
+    required this.userId,
+    required this.courseProgressId,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return IconButton(
+      icon: const Icon(Icons.delete_outline, size: 18),
+      color: Colors.grey[500],
+      tooltip: 'Remove course progress',
+      style: IconButton.styleFrom(
+        padding: EdgeInsets.zero,
+        minimumSize: const Size(28, 28),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: () => _confirm(context, ref),
+    );
+  }
+
+  void _confirm(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove course progress'),
+        content: const Text(
+          'This will delete all progress for this course including lessons and modules. '
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final messenger = ScaffoldMessenger.of(context);
+              final success = await ref
+                  .read(deleteCourseProgressProvider.notifier)
+                  .delete(courseProgressId);
+
+              ref.invalidate(courseProgressForUserProvider(userId));
+              ref.invalidate(lessonProgressForUserProvider(userId));
+              ref.invalidate(moduleProgressForUserProvider(userId));
+
+              messenger.showSnackBar(SnackBar(
+                content: Text(success
+                    ? 'Course progress removed.'
+                    : 'Failed to remove course progress.'),
+                backgroundColor:
+                    success ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+              ));
+            },
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFDC2626)),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Thin labelled progress rail  (label | bar | count)
+// ---------------------------------------------------------------------------
+
+class _ProgressRail extends StatelessWidget {
+  final String label;
+  final int completed;
+  final int total;
+  final Color color;
+
+  const _ProgressRail({
+    required this.label,
+    required this.completed,
+    required this.total,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = total > 0 ? (completed / total).clamp(0.0, 1.0) : 0.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+            const Spacer(),
+            Text(
+              '$completed/$total',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: fraction,
+            minHeight: 6,
+            backgroundColor: Colors.grey.shade200,
+            color: color,
+          ),
+        ),
+      ],
+    );
   }
 }

@@ -134,13 +134,13 @@ class LessonProgress {
     this.updatedAt,
   });
 
-  bool get isCompleted => completedAt != null || status == 'completed';
+  bool get isCompleted => completedAt != null || status == 'completed' || status == 'done';
 
   factory LessonProgress.fromMap(Map<String, dynamic> map) {
     return LessonProgress(
-      id: map['id'] as String,
-      userId: map['user_id'] as String,
-      lessonId: map['lesson_id'] as String,
+      id: (map['id'] ?? '') as String,
+      userId: (map['user_id'] ?? map['auth_user_id'] ?? '') as String,
+      lessonId: (map['lesson_id'] ?? '') as String,
       courseProgressId: map['course_progress_id'] as String?,
       status: map['status'] as String?,
       startedAt: _dt(map['started_at']),

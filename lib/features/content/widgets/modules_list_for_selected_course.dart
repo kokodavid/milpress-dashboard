@@ -154,7 +154,7 @@ class _ModuleCard extends ConsumerWidget {
                     ),
             ),
           ),
-          title: Text('Module ${module.position}'),
+          title: Text(module.description?.isNotEmpty == true ? module.description! : 'Module ${module.position}'),
           subtitle: isAssessment
               ? assessmentAsync!.when(
                   data: (assessment) {

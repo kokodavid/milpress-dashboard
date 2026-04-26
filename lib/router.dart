@@ -24,7 +24,9 @@ final GoRouter appRouter = GoRouter(
 			path: '/lessons/:lessonId/steps',
 			builder: (context, state) {
 				final lessonId = state.pathParameters['lessonId']!;
-				return LessonStepsBuilderScreen(lessonId: lessonId);
+				final stepParam = state.uri.queryParameters['step'];
+				final initialStepIndex = stepParam != null ? int.tryParse(stepParam) : null;
+				return LessonStepsBuilderScreen(lessonId: lessonId, initialStepIndex: initialStepIndex);
 			},
 		),
 		ShellRoute(

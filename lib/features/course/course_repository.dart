@@ -11,10 +11,16 @@ final courseRepositoryProvider = Provider<CourseRepository>((ref) {
   return CourseRepository(client);
 });
 
-// Total count of courses
+// Total count of all courses
 final coursesCountProvider = FutureProvider<int>((ref) async {
   final repo = ref.watch(courseRepositoryProvider);
   return repo.countCourses();
+});
+
+// Total count of published courses only
+final publishedCoursesCountProvider = FutureProvider<int>((ref) async {
+  final repo = ref.watch(courseRepositoryProvider);
+  return repo.countPublishedCourses();
 });
 
 final coursesListProvider = FutureProvider.family<List<Course>, CoursesQuery?>((ref, query) async {
@@ -234,9 +240,18 @@ class CourseRepository {
     await _client.from(table).delete().eq('id', id);
   }
 
-  // Count
+  // Count all courses
   Future<int> countCourses() async {
     final List data = await _client.from(table).select('id');
+    return data.length;
+  }
+
+  // Count only published (unlocked) courses
+  Future<int> countPublishedCourses() async {
+    final List data = await _client
+        .from(table)
+        .select('id')
+        .eq('locked', false);
     return data.length;
   }
 }

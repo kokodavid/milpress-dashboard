@@ -15,7 +15,7 @@ class AssessmentV2RepositoryImpl implements AssessmentV2Repository {
   static const String assessmentsTable = 'course_assessments';
   static const String levelsTable = 'assessment_levels';
   static const String sublevelsTable = 'assessment_sublevels';
-  static const String progressTable = 'assessment_v2_progress';
+  static const String progressTable = 'course_assessment_progress';
 
   // =========================================================================
   // Assessments

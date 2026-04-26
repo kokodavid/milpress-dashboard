@@ -17,9 +17,17 @@ import 'widgets/step_editor_panel.dart';
 ///   [StepEditorPanel]      — inline field editor for the active step
 ///   [LearnerPreviewPanel]  — phone/tablet device-frame preview
 class LessonStepsBuilderScreen extends ConsumerWidget {
-  const LessonStepsBuilderScreen({super.key, required this.lessonId});
+  const LessonStepsBuilderScreen({
+    super.key,
+    required this.lessonId,
+    this.initialStepIndex,
+  });
 
   final String lessonId;
+
+  /// When provided, the builder will pre-select this step (0-indexed) as soon
+  /// as it loads — allowing callers to deep-link directly into a specific step.
+  final int? initialStepIndex;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -42,7 +50,21 @@ class LessonStepsBuilderScreen extends ConsumerWidget {
         }
 
         // Pre-warm the drafts provider as soon as the lesson data is available
-        ref.watch(lessonBuilderDraftsProvider(lessonId));
+        final drafts = ref.watch(lessonBuilderDraftsProvider(lessonId));
+
+        // Pre-select the requested step index (e.g. when navigating from the
+        // lesson detail pane's per-step edit button).
+        if (initialStepIndex != null && drafts.isNotEmpty) {
+          final clamped = initialStepIndex!.clamp(0, drafts.length - 1);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final current = ref.read(lessonBuilderSelectedStepProvider(lessonId));
+            if (current != clamped) {
+              ref
+                  .read(lessonBuilderSelectedStepProvider(lessonId).notifier)
+                  .state = clamped;
+            }
+          });
+        }
 
         return Scaffold(
           backgroundColor: const Color(0xFFF5F5F5),

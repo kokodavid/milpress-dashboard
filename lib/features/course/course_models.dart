@@ -23,7 +23,7 @@ class Course {
     this.soundUrlOverview,
     this.soundUrlDetail,
     this.locked = false,
-  this.modules,
+    this.modules,
     this.createdAt,
     this.updatedAt,
   });

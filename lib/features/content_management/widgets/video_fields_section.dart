@@ -135,18 +135,30 @@ class _UrlField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        helperText: helperText,
-        border: const OutlineInputBorder(),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-        suffixIcon: PreviewSuffixIcon(ctrl: controller, label: label),
-      ),
-      keyboardType: TextInputType.url,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: TextFormField(
+            controller: controller,
+            decoration: InputDecoration(
+              labelText: label,
+              hintText: hint,
+              helperText: helperText,
+              border: const OutlineInputBorder(),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            ),
+            keyboardType: TextInputType.url,
+          ),
+        ),
+        // Align chip with the input's vertical centre (InputDecoration default
+        // height is ~56 px; chip is ~32 px so 12 px top offset centres it).
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: ThumbnailChip(ctrl: controller, label: label),
+        ),
+      ],
     );
   }
 }

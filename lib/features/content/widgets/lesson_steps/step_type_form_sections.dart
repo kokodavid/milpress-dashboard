@@ -11,42 +11,34 @@ typedef StepFormSetState = void Function(VoidCallback fn);
 // Shared URL field with built-in preview icon
 // ---------------------------------------------------------------------------
 
-/// Drop-in replacement for any TextFormField holding an audio/image URL.
-/// Shows an eye icon in the suffix when the field has a value.
+/// URL field + [ThumbnailChip] sibling in a Row.
+/// Works whether the caller wraps it in [Expanded] or not.
 Widget _mediaUrlField(
   BuildContext context, {
   required TextEditingController controller,
   required String label,
   String? hint,
 }) {
-  return ValueListenableBuilder<TextEditingValue>(
-    valueListenable: controller,
-    builder: (context, value, _) {
-      return TextFormField(
-        controller: controller,
-        keyboardType: TextInputType.url,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          border: const OutlineInputBorder(),
-          suffixIcon: value.text.trim().isNotEmpty
-              ? IconButton(
-                  icon: Icon(
-                    Icons.visibility_outlined,
-                    size: 18,
-                    color: Colors.indigo.shade400,
-                  ),
-                  tooltip: 'Preview $label',
-                  onPressed: () => MediaPreviewDialog.show(
-                    context,
-                    url: value.text.trim(),
-                    label: label,
-                  ),
-                )
-              : null,
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: TextFormField(
+          controller: controller,
+          keyboardType: TextInputType.url,
+          decoration: InputDecoration(
+            labelText: label,
+            hintText: hint,
+            border: const OutlineInputBorder(),
+          ),
         ),
-      );
-    },
+      ),
+      // ThumbnailChip handles its own 8 px left margin and hides when empty.
+      Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: ThumbnailChip(ctrl: controller, label: label),
+      ),
+    ],
   );
 }
 
@@ -2533,6 +2525,7 @@ Widget _buildPhonemeRow(
           child: TextFormField(
             controller: ph.audioUrlCtrl,
             keyboardType: TextInputType.url,
+            // Compact row — PreviewSuffixIcon used (no room for sibling chip).
             decoration: InputDecoration(
               labelText: 'Audio URL',
               border: const OutlineInputBorder(),
@@ -2982,7 +2975,6 @@ class _DynamicFieldInput extends StatelessWidget {
           label: label,
           isRequired: isRequired,
           hint: hint ?? 'https://… (image URL)',
-          suffixIcon: PreviewSuffixIcon(ctrl: controller, label: label),
         );
 
       case StepFieldType.audioUrl:
@@ -2990,7 +2982,6 @@ class _DynamicFieldInput extends StatelessWidget {
           label: label,
           isRequired: isRequired,
           hint: hint ?? 'https://… (audio URL)',
-          suffixIcon: PreviewSuffixIcon(ctrl: controller, label: label),
         );
 
       case StepFieldType.text:
@@ -3019,21 +3010,30 @@ class _DynamicFieldInput extends StatelessWidget {
     required String label,
     required bool isRequired,
     required String hint,
-    Widget? suffixIcon,
   }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        border: const OutlineInputBorder(),
-        isDense: true,
-        suffixIcon: suffixIcon,
-      ),
-      validator: isRequired
-          ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
-          : null,
-      keyboardType: TextInputType.url,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: TextFormField(
+            controller: controller,
+            decoration: InputDecoration(
+              labelText: label,
+              hintText: hint,
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+            validator: isRequired
+                ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
+                : null,
+            keyboardType: TextInputType.url,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: ThumbnailChip(ctrl: controller, label: label),
+        ),
+      ],
     );
   }
 }

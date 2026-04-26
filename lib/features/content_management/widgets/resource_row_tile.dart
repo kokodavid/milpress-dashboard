@@ -229,26 +229,46 @@ class _ResourceEditDialogState extends ConsumerState<_ResourceEditDialog> {
                     (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _fileUrlCtrl,
-                decoration: InputDecoration(
-                  labelText: 'File URL',
-                  hintText: 'https://… (PDF or video file)',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: PreviewSuffixIcon(ctrl: _fileUrlCtrl, label: 'File'),
-                ),
-                keyboardType: TextInputType.url,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _fileUrlCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'File URL',
+                        hintText: 'https://… (PDF or video file)',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: ThumbnailChip(ctrl: _fileUrlCtrl, label: 'File'),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _audioUrlCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Audio URL',
-                  hintText: 'https://… (MP3 or M4A)',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: PreviewSuffixIcon(ctrl: _audioUrlCtrl, label: 'Audio'),
-                ),
-                keyboardType: TextInputType.url,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _audioUrlCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Audio URL',
+                        hintText: 'https://… (MP3 or M4A)',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: ThumbnailChip(ctrl: _audioUrlCtrl, label: 'Audio'),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(

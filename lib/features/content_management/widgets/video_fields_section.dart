@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../utils/app_colors.dart';
 import '../../../widgets/app_button.dart';
+import '../../../widgets/media_preview_dialog.dart';
 import '../app_content_model.dart';
 import '../content_management_providers.dart';
 import '../content_management_repository.dart';
@@ -143,6 +144,7 @@ class _UrlField extends StatelessWidget {
         border: const OutlineInputBorder(),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        suffixIcon: PreviewSuffixIcon(ctrl: controller, label: label),
       ),
       keyboardType: TextInputType.url,
     );

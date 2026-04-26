@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../widgets/media_preview_dialog.dart';
 import '../../../lesson_v2/lesson_v2_models.dart';
 
 class StepCard extends StatefulWidget {
@@ -958,8 +959,12 @@ class DetailRow extends StatelessWidget {
   final String label;
   final String value;
 
+  static bool _looksLikeUrl(String v) =>
+      v.startsWith('http') || (v.contains('/') && v.contains('.'));
+
   @override
   Widget build(BuildContext context) {
+    final isUrl = _looksLikeUrl(value);
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
@@ -977,6 +982,19 @@ class DetailRow extends StatelessWidget {
           Expanded(
             child: Text(value, style: Theme.of(context).textTheme.bodySmall),
           ),
+          if (isUrl)
+            InkWell(
+              onTap: () => MediaPreviewDialog.show(context, url: value, label: label),
+              borderRadius: BorderRadius.circular(4),
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: Icon(
+                  Icons.visibility_outlined,
+                  size: 14,
+                  color: Colors.indigo.shade400,
+                ),
+              ),
+            ),
         ],
       ),
     );

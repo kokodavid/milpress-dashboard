@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../widgets/media_preview_dialog.dart';
 import '../app_resource_model.dart';
 import '../content_management_providers.dart';
 import '../content_management_repository.dart';
@@ -147,6 +148,15 @@ class _UrlStatus extends StatelessWidget {
             ),
           ),
         ),
+        if (isSet)
+          InkWell(
+            onTap: () => MediaPreviewDialog.show(context, url: url, label: label),
+            borderRadius: BorderRadius.circular(4),
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: Icon(Icons.visibility_outlined, size: 14, color: Colors.indigo.shade400),
+            ),
+          ),
       ],
     );
   }
@@ -221,20 +231,22 @@ class _ResourceEditDialogState extends ConsumerState<_ResourceEditDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _fileUrlCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'File URL',
                   hintText: 'https://… (PDF or video file)',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: PreviewSuffixIcon(ctrl: _fileUrlCtrl, label: 'File'),
                 ),
                 keyboardType: TextInputType.url,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _audioUrlCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Audio URL',
                   hintText: 'https://… (MP3 or M4A)',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: PreviewSuffixIcon(ctrl: _audioUrlCtrl, label: 'Audio'),
                 ),
                 keyboardType: TextInputType.url,
               ),

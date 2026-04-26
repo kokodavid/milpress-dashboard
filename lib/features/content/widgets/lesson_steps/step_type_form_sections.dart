@@ -1,10 +1,54 @@
 import 'package:flutter/material.dart';
 
+import '../../../../widgets/media_preview_dialog.dart';
 import '../../../lesson_v2/lesson_v2_models.dart';
 import '../../../lesson_v2/step_type_definition.dart';
 import 'step_drafts.dart';
 
 typedef StepFormSetState = void Function(VoidCallback fn);
+
+// ---------------------------------------------------------------------------
+// Shared URL field with built-in preview icon
+// ---------------------------------------------------------------------------
+
+/// Drop-in replacement for any TextFormField holding an audio/image URL.
+/// Shows an eye icon in the suffix when the field has a value.
+Widget _mediaUrlField(
+  BuildContext context, {
+  required TextEditingController controller,
+  required String label,
+  String? hint,
+}) {
+  return ValueListenableBuilder<TextEditingValue>(
+    valueListenable: controller,
+    builder: (context, value, _) {
+      return TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.url,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          border: const OutlineInputBorder(),
+          suffixIcon: value.text.trim().isNotEmpty
+              ? IconButton(
+                  icon: Icon(
+                    Icons.visibility_outlined,
+                    size: 18,
+                    color: Colors.indigo.shade400,
+                  ),
+                  tooltip: 'Preview $label',
+                  onPressed: () => MediaPreviewDialog.show(
+                    context,
+                    url: value.text.trim(),
+                    label: label,
+                  ),
+                )
+              : null,
+        ),
+      );
+    },
+  );
+}
 
 Widget buildLessonStepTypeFields({
   required BuildContext context,
@@ -18,7 +62,7 @@ Widget buildLessonStepTypeFields({
 
   switch (step.stepType) {
     case LessonStepType.introduction:
-      return _buildIntroductionFields(step);
+      return _buildIntroductionFields(context, step);
     case LessonStepType.demonstration:
       return _buildDemonstrationFields(context, step, setState);
     case LessonStepType.practice:
@@ -429,7 +473,7 @@ String? validateLessonStepDraft(StepDraft step) {
   }
 }
 
-Widget _buildIntroductionFields(StepDraft step) {
+Widget _buildIntroductionFields(BuildContext context, StepDraft step) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -449,55 +493,19 @@ Widget _buildIntroductionFields(StepDraft step) {
         ),
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.audioBaseUrlCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Audio Base URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.audioBaseUrlCtrl, label: 'Audio Base URL'),
       const SizedBox(height: 8),
       Row(
         children: [
-          Expanded(
-            child: TextFormField(
-              controller: step.audio05Ctrl,
-              decoration: const InputDecoration(
-                labelText: 'Audio 0.5x URL',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
+          Expanded(child: _mediaUrlField(context, controller: step.audio05Ctrl, label: 'Audio 0.5x URL')),
           const SizedBox(width: 8),
-          Expanded(
-            child: TextFormField(
-              controller: step.audio1Ctrl,
-              decoration: const InputDecoration(
-                labelText: 'Audio 1x URL',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
+          Expanded(child: _mediaUrlField(context, controller: step.audio1Ctrl, label: 'Audio 1x URL')),
           const SizedBox(width: 8),
-          Expanded(
-            child: TextFormField(
-              controller: step.audio15Ctrl,
-              decoration: const InputDecoration(
-                labelText: 'Audio 1.5x URL',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ),
+          Expanded(child: _mediaUrlField(context, controller: step.audio15Ctrl, label: 'Audio 1.5x URL')),
         ],
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.howToSvgUrlCtrl,
-        decoration: const InputDecoration(
-          labelText: 'How-to SVG URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.howToSvgUrlCtrl, label: 'How-to SVG URL'),
       const SizedBox(height: 8),
       TextFormField(
         controller: step.practiceTipTextCtrl,
@@ -507,13 +515,7 @@ Widget _buildIntroductionFields(StepDraft step) {
         ),
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.practiceTipAudioCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Practice Tip Audio URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.practiceTipAudioCtrl, label: 'Practice Tip Audio URL'),
     ],
   );
 }
@@ -538,6 +540,7 @@ Widget _buildDemonstrationFields(
       const SizedBox(height: 6),
       for (var i = 0; i < step.imageUrlCtrls.length; i++)
         _buildUrlRow(
+          context: context,
           controller: step.imageUrlCtrls[i],
           onRemove: () => setState(() => step.removeImageUrl(i)),
         ),
@@ -590,6 +593,7 @@ Widget _buildPracticeFields(
       const SizedBox(height: 6),
       for (var i = 0; i < step.practiceItems.length; i++)
         _buildPracticeItemRow(
+          context: context,
           item: step.practiceItems[i],
           onRemove: () => setState(() => step.removePracticeItem(i)),
         ),
@@ -610,13 +614,7 @@ Widget _buildPracticeFields(
         ),
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.tipSoundCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Tip Sound URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.tipSoundCtrl, label: 'Tip Sound URL'),
     ],
   );
 }
@@ -646,18 +644,13 @@ Widget _buildAssessmentFields(
         maxLines: 2,
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.soundInstructionCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Sound Instruction URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.soundInstructionCtrl, label: 'Sound Instruction URL'),
       const SizedBox(height: 8),
       Text('Options', style: Theme.of(context).textTheme.bodyMedium),
       const SizedBox(height: 6),
       for (var i = 0; i < step.assessmentOptions.length; i++)
         _buildAssessmentOptionRow(
+          context: context,
           option: step.assessmentOptions[i],
           onRemove: () => setState(() => step.removeAssessmentOption(i)),
           setState: setState,
@@ -700,13 +693,7 @@ Widget _buildBlendingFields(
         maxLines: 2,
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.instructionAudioCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Instruction Audio URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.instructionAudioCtrl, label: 'Instruction Audio URL'),
       const SizedBox(height: 12),
       Text('Examples', style: Theme.of(context).textTheme.bodyMedium),
       const SizedBox(height: 6),
@@ -741,13 +728,7 @@ Widget _buildSoundDiscriminationFields(
         ),
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.titleAudioCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Title Audio URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.titleAudioCtrl, label: 'Title Audio URL'),
       const SizedBox(height: 8),
       Row(
         children: [
@@ -924,13 +905,7 @@ Widget _buildPracticeGameFields(
         maxLines: 2,
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.practiceGameInstructionAudioCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Instruction Audio URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.practiceGameInstructionAudioCtrl, label: 'Instruction Audio URL'),
       const SizedBox(height: 8),
       Row(
         children: [
@@ -1059,13 +1034,7 @@ Widget _buildMissingLettersFields(
         ),
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.missingLettersInstructionAudioCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Instruction Audio URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.missingLettersInstructionAudioCtrl, label: 'Instruction Audio URL'),
       const SizedBox(height: 12),
       Text('Activities', style: Theme.of(context).textTheme.bodyMedium),
       const SizedBox(height: 6),
@@ -1106,13 +1075,7 @@ Widget _buildMatchingWordsFields(
         ),
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.matchingWordsInstructionAudioCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Instruction Audio URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.matchingWordsInstructionAudioCtrl, label: 'Instruction Audio URL'),
       const SizedBox(height: 12),
       Text('Activities', style: Theme.of(context).textTheme.bodyMedium),
       const SizedBox(height: 6),
@@ -1153,13 +1116,7 @@ Widget _buildWordReadingFields(
         ),
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.wordReadingInstructionAudioCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Instruction Audio URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.wordReadingInstructionAudioCtrl, label: 'Instruction Audio URL'),
       const SizedBox(height: 12),
       Text('Items', style: Theme.of(context).textTheme.bodyMedium),
       const SizedBox(height: 6),
@@ -1200,13 +1157,7 @@ Widget _buildSentenceReadingFields(
         ),
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.sentenceReadingInstructionAudioCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Instruction Audio URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.sentenceReadingInstructionAudioCtrl, label: 'Instruction Audio URL'),
       const SizedBox(height: 12),
       Text('Items', style: Theme.of(context).textTheme.bodyMedium),
       const SizedBox(height: 6),
@@ -1247,13 +1198,7 @@ Widget _buildMiniStoryCardFields(
         ),
       ),
       const SizedBox(height: 8),
-      TextFormField(
-        controller: step.miniStoryCardInstructionAudioCtrl,
-        decoration: const InputDecoration(
-          labelText: 'Instruction Audio URL',
-          border: OutlineInputBorder(),
-        ),
-      ),
+      _mediaUrlField(context, controller: step.miniStoryCardInstructionAudioCtrl, label: 'Instruction Audio URL'),
       const SizedBox(height: 12),
       Text('Items', style: Theme.of(context).textTheme.bodyMedium),
       const SizedBox(height: 6),
@@ -1328,13 +1273,7 @@ Widget _buildBlendingExampleCard(
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
-                  controller: ex.audioUrlCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Word Audio URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                child: _mediaUrlField(context, controller: ex.audioUrlCtrl, label: 'Word Audio URL'),
               ),
             ],
           ),
@@ -1407,24 +1346,12 @@ Widget _buildSoundDiscriminationItemCard({
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
-                  controller: item.titleAudioCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Word Audio URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                child: _mediaUrlField(context, controller: item.titleAudioCtrl, label: 'Word Audio URL'),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: item.imageUrlCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Image URL',
-              border: OutlineInputBorder(),
-            ),
-          ),
+          _mediaUrlField(context, controller: item.imageUrlCtrl, label: 'Image URL'),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -1505,23 +1432,11 @@ Widget _buildSoundItemMatchingActivityCard({
           Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  controller: activity.promptAudioCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Prompt Audio URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                child: _mediaUrlField(context, controller: activity.promptAudioCtrl, label: 'Prompt Audio URL'),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
-                  controller: activity.contentAudioCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Content Audio URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                child: _mediaUrlField(context, controller: activity.contentAudioCtrl, label: 'Content Audio URL'),
               ),
             ],
           ),
@@ -1655,13 +1570,7 @@ Widget _buildGuidedReadingActivityCard({
             maxLines: 2,
           ),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: activity.instructionAudioCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Instruction Audio URL',
-              border: OutlineInputBorder(),
-            ),
-          ),
+          _mediaUrlField(context, controller: activity.instructionAudioCtrl, label: 'Instruction Audio URL'),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -1677,13 +1586,7 @@ Widget _buildGuidedReadingActivityCard({
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
-                  controller: activity.wordAudioCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Word Audio URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                child: _mediaUrlField(context, controller: activity.wordAudioCtrl, label: 'Word Audio URL'),
               ),
             ],
           ),
@@ -1750,13 +1653,7 @@ Widget _buildGuidedReadingSegmentRow({
         Row(
           children: [
             Expanded(
-              child: TextFormField(
-                controller: segment.audioUrlCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Segment Audio URL',
-                  border: OutlineInputBorder(),
-                ),
-              ),
+              child: _mediaUrlField(context, controller: segment.audioUrlCtrl, label: 'Segment Audio URL'),
             ),
             const SizedBox(width: 8),
             Row(
@@ -1822,21 +1719,9 @@ Widget _buildPracticeGameOptionCard({
             ),
           ),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: option.imageUrlCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Image URL',
-              border: OutlineInputBorder(),
-            ),
-          ),
+          _mediaUrlField(context, controller: option.imageUrlCtrl, label: 'Image URL'),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: option.audioUrlCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Audio URL',
-              border: OutlineInputBorder(),
-            ),
-          ),
+          _mediaUrlField(context, controller: option.audioUrlCtrl, label: 'Audio URL'),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -1900,13 +1785,7 @@ Widget _buildSoundPresenceCheckQuestionCard({
             maxLines: 2,
           ),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: question.promptAudioCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Prompt Audio URL',
-              border: OutlineInputBorder(),
-            ),
-          ),
+          _mediaUrlField(context, controller: question.promptAudioCtrl, label: 'Prompt Audio URL'),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -1922,13 +1801,7 @@ Widget _buildSoundPresenceCheckQuestionCard({
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: TextFormField(
-                  controller: question.wordAudioCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Word Audio URL',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                child: _mediaUrlField(context, controller: question.wordAudioCtrl, label: 'Word Audio URL'),
               ),
             ],
           ),
@@ -2215,23 +2088,11 @@ Widget _buildMatchingWordsActivityCard({
           ),
           if (isSoundMode) ...[
             const SizedBox(height: 8),
-            TextFormField(
-              controller: activity.promptAudioCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Prompt Audio URL',
-                border: OutlineInputBorder(),
-              ),
-            ),
+            _mediaUrlField(context, controller: activity.promptAudioCtrl, label: 'Prompt Audio URL'),
           ],
           if (activity.mode == 'image_to_word') ...[
             const SizedBox(height: 8),
-            TextFormField(
-              controller: activity.promptImageCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Prompt Image URL',
-                border: OutlineInputBorder(),
-              ),
-            ),
+            _mediaUrlField(context, controller: activity.promptImageCtrl, label: 'Prompt Image URL'),
           ],
           const SizedBox(height: 8),
           TextFormField(
@@ -2310,13 +2171,7 @@ Widget _buildMatchingWordsOptionCard({
           ),
           if (showImageField) ...[
             const SizedBox(height: 8),
-            TextFormField(
-              controller: option.imageUrlCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Image URL',
-                border: OutlineInputBorder(),
-              ),
-            ),
+            _mediaUrlField(context, controller: option.imageUrlCtrl, label: 'Image URL'),
           ],
         ],
       ),
@@ -2369,21 +2224,9 @@ Widget _buildWordReadingItemCard({
             ),
           ),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: item.imageUrlCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Image URL',
-              border: OutlineInputBorder(),
-            ),
-          ),
+          _mediaUrlField(context, controller: item.imageUrlCtrl, label: 'Image URL'),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: item.wordAudioCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Word Audio URL',
-              border: OutlineInputBorder(),
-            ),
-          ),
+          _mediaUrlField(context, controller: item.wordAudioCtrl, label: 'Word Audio URL'),
           const SizedBox(height: 8),
           TextFormField(
             controller: item.modelReadingLabelCtrl,
@@ -2398,6 +2241,7 @@ Widget _buildWordReadingItemCard({
           const SizedBox(height: 6),
           for (var i = 0; i < item.segments.length; i++)
             _buildWordReadingSegmentRow(
+              context: context,
               segment: item.segments[i],
               onRemove: () => setState(() => item.removeSegment(i)),
               setState: setState,
@@ -2417,6 +2261,7 @@ Widget _buildWordReadingItemCard({
 }
 
 Widget _buildWordReadingSegmentRow({
+  required BuildContext context,
   required WordReadingSegmentDraft segment,
   required VoidCallback onRemove,
   required StepFormSetState setState,
@@ -2439,13 +2284,7 @@ Widget _buildWordReadingSegmentRow({
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: TextFormField(
-                controller: segment.audioUrlCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Segment Audio URL',
-                  border: OutlineInputBorder(),
-                ),
-              ),
+              child: _mediaUrlField(context, controller: segment.audioUrlCtrl, label: 'Segment Audio URL'),
             ),
             IconButton(onPressed: onRemove, icon: const Icon(Icons.close)),
           ],
@@ -2511,13 +2350,7 @@ Widget _buildSentenceReadingItemCard({
             maxLines: 2,
           ),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: item.sentenceAudioCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Sentence Audio URL',
-              border: OutlineInputBorder(),
-            ),
-          ),
+          _mediaUrlField(context, controller: item.sentenceAudioCtrl, label: 'Sentence Audio URL'),
           const SizedBox(height: 8),
           TextFormField(
             controller: item.selfReadLabelCtrl,
@@ -2617,21 +2450,9 @@ Widget _buildMiniStoryCardItemCard({
             ),
           ),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: item.headingAudioCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Heading Audio URL',
-              border: OutlineInputBorder(),
-            ),
-          ),
+          _mediaUrlField(context, controller: item.headingAudioCtrl, label: 'Heading Audio URL'),
           const SizedBox(height: 8),
-          TextFormField(
-            controller: item.storyAudioCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Story Audio URL',
-              border: OutlineInputBorder(),
-            ),
-          ),
+          _mediaUrlField(context, controller: item.storyAudioCtrl, label: 'Story Audio URL'),
           const SizedBox(height: 8),
           TextFormField(
             controller: item.ctaLabelCtrl,
@@ -2711,9 +2532,11 @@ Widget _buildPhonemeRow(
         Expanded(
           child: TextFormField(
             controller: ph.audioUrlCtrl,
-            decoration: const InputDecoration(
+            keyboardType: TextInputType.url,
+            decoration: InputDecoration(
               labelText: 'Audio URL',
-              border: OutlineInputBorder(),
+              border: const OutlineInputBorder(),
+              suffixIcon: PreviewSuffixIcon(ctrl: ph.audioUrlCtrl, label: 'Audio URL'),
             ),
           ),
         ),
@@ -2742,6 +2565,7 @@ Widget _buildPhonemeRow(
 }
 
 Widget _buildUrlRow({
+  required BuildContext context,
   required TextEditingController controller,
   required VoidCallback onRemove,
 }) {
@@ -2750,13 +2574,7 @@ Widget _buildUrlRow({
     child: Row(
       children: [
         Expanded(
-          child: TextFormField(
-            controller: controller,
-            decoration: const InputDecoration(
-              labelText: 'Image URL',
-              border: OutlineInputBorder(),
-            ),
-          ),
+          child: _mediaUrlField(context, controller: controller, label: 'Image URL'),
         ),
         const SizedBox(width: 8),
         IconButton(onPressed: onRemove, icon: const Icon(Icons.close)),
@@ -2766,6 +2584,7 @@ Widget _buildUrlRow({
 }
 
 Widget _buildPracticeItemRow({
+  required BuildContext context,
   required PracticeItemDraft item,
   required VoidCallback onRemove,
 }) {
@@ -2786,13 +2605,7 @@ Widget _buildPracticeItemRow({
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: TextFormField(
-                controller: item.imageUrlCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Image URL',
-                  border: OutlineInputBorder(),
-                ),
-              ),
+              child: _mediaUrlField(context, controller: item.imageUrlCtrl, label: 'Image URL'),
             ),
           ],
         ),
@@ -2800,13 +2613,7 @@ Widget _buildPracticeItemRow({
         Row(
           children: [
             Expanded(
-              child: TextFormField(
-                controller: item.soundUrlCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Sound URL',
-                  border: OutlineInputBorder(),
-                ),
-              ),
+              child: _mediaUrlField(context, controller: item.soundUrlCtrl, label: 'Sound URL'),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -2830,6 +2637,7 @@ Widget _buildPracticeItemRow({
 }
 
 Widget _buildAssessmentOptionRow({
+  required BuildContext context,
   required AssessmentOptionDraft option,
   required VoidCallback onRemove,
   required StepFormSetState setState,
@@ -2851,13 +2659,7 @@ Widget _buildAssessmentOptionRow({
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: TextFormField(
-                controller: option.imageUrlCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Image URL',
-                  border: OutlineInputBorder(),
-                ),
-              ),
+              child: _mediaUrlField(context, controller: option.imageUrlCtrl, label: 'Image URL'),
             ),
           ],
         ),
@@ -3158,7 +2960,7 @@ class _DynamicFieldsFormState extends State<_DynamicFieldsForm> {
 
 // ── Single dynamic field input ────────────────────────────────────────────────
 
-class _DynamicFieldInput extends StatefulWidget {
+class _DynamicFieldInput extends StatelessWidget {
   const _DynamicFieldInput({
     required this.field,
     required this.controller,
@@ -3168,33 +2970,11 @@ class _DynamicFieldInput extends StatefulWidget {
   final TextEditingController controller;
 
   @override
-  State<_DynamicFieldInput> createState() => _DynamicFieldInputState();
-}
-
-class _DynamicFieldInputState extends State<_DynamicFieldInput> {
-  // Tracks whether the image/audio URL entered is non-empty for preview.
-  bool get _hasValue => widget.controller.text.trim().isNotEmpty;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_rebuild);
-  }
-
-  void _rebuild() => setState(() {});
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_rebuild);
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final fieldType = widget.field.fieldType;
-    final label = widget.field.label;
-    final isRequired = widget.field.isRequired;
-    final hint = widget.field.hint;
+    final fieldType = field.fieldType;
+    final label = field.label;
+    final isRequired = field.isRequired;
+    final hint = field.hint;
 
     switch (fieldType) {
       case StepFieldType.imageUrl:
@@ -3202,30 +2982,7 @@ class _DynamicFieldInputState extends State<_DynamicFieldInput> {
           label: label,
           isRequired: isRequired,
           hint: hint ?? 'https://… (image URL)',
-          previewBuilder: _hasValue
-              ? () => Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.network(
-                        widget.controller.text.trim(),
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          height: 80,
-                          color: Colors.grey.shade100,
-                          child: Center(
-                            child: Text(
-                              'Invalid image URL',
-                              style: TextStyle(
-                                  fontSize: 11, color: Colors.grey.shade400),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-              : null,
+          suffixIcon: PreviewSuffixIcon(ctrl: controller, label: label),
         );
 
       case StepFieldType.audioUrl:
@@ -3233,18 +2990,12 @@ class _DynamicFieldInputState extends State<_DynamicFieldInput> {
           label: label,
           isRequired: isRequired,
           hint: hint ?? 'https://… (audio URL)',
-          suffixIcon: _hasValue
-              ? Tooltip(
-                  message: 'Audio URL entered',
-                  child: Icon(Icons.volume_up,
-                      size: 18, color: Colors.green.shade600),
-                )
-              : null,
+          suffixIcon: PreviewSuffixIcon(ctrl: controller, label: label),
         );
 
       case StepFieldType.text:
         return TextFormField(
-          controller: widget.controller,
+          controller: controller,
           decoration: InputDecoration(
             labelText: label,
             hintText: hint ?? '',
@@ -3268,28 +3019,21 @@ class _DynamicFieldInputState extends State<_DynamicFieldInput> {
     required String label,
     required bool isRequired,
     required String hint,
-    Widget Function()? previewBuilder,
     Widget? suffixIcon,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: widget.controller,
-          decoration: InputDecoration(
-            labelText: label,
-            hintText: hint,
-            border: const OutlineInputBorder(),
-            isDense: true,
-            suffixIcon: suffixIcon,
-          ),
-          validator: isRequired
-              ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
-              : null,
-          keyboardType: TextInputType.url,
-        ),
-        if (previewBuilder != null) previewBuilder(),
-      ],
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        border: const OutlineInputBorder(),
+        isDense: true,
+        suffixIcon: suffixIcon,
+      ),
+      validator: isRequired
+          ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
+          : null,
+      keyboardType: TextInputType.url,
     );
   }
 }

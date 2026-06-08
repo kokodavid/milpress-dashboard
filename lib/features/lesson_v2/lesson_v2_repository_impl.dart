@@ -59,6 +59,15 @@ class LessonV2RepositoryImpl implements LessonV2Repository {
   }
 
   @override
+  Future<bool> togglePremium(String id, {required bool isPremium}) async {
+    await _client
+        .from(lessonsTable)
+        .update({'is_premium': isPremium})
+        .eq('id', id);
+    return isPremium;
+  }
+
+  @override
   Future<void> updateSteps(String lessonId, List<LessonStepInput> steps) async {
     await _client.from(stepsTable).delete().eq('lesson_id', lessonId);
     if (steps.isEmpty) return;

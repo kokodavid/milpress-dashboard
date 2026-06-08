@@ -8,6 +8,7 @@ class Course {
   final String? soundUrlOverview;
   final String? soundUrlDetail;
   final bool locked;
+  final bool isPremium;
   // jsonb column may contain either an object or an array; keep this flexible
   final Object? modules;
   final DateTime? createdAt;
@@ -23,6 +24,7 @@ class Course {
     this.soundUrlOverview,
     this.soundUrlDetail,
     this.locked = false,
+    this.isPremium = false,
     this.modules,
     this.createdAt,
     this.updatedAt,
@@ -39,6 +41,7 @@ class Course {
       soundUrlOverview: json['sound_url_overview'] as String?,
       soundUrlDetail: json['sound_url_detail'] as String?,
       locked: (json['locked'] as bool?) ?? false,
+      isPremium: (json['is_premium'] as bool?) ?? false,
       // Don't force-cast to Map to avoid type errors when the JSONB is an array
       modules: json['modules'],
       createdAt: _toDateTime(json['created_at']),
@@ -57,6 +60,7 @@ class Course {
       'sound_url_overview': soundUrlOverview,
       'sound_url_detail': soundUrlDetail,
       'locked': locked,
+      'is_premium': isPremium,
       'modules': modules,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
@@ -79,6 +83,7 @@ class Course {
     String? soundUrlOverview,
     String? soundUrlDetail,
     bool? locked,
+    bool? isPremium,
     Object? modules,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -93,6 +98,7 @@ class Course {
       soundUrlOverview: soundUrlOverview ?? this.soundUrlOverview,
       soundUrlDetail: soundUrlDetail ?? this.soundUrlDetail,
       locked: locked ?? this.locked,
+      isPremium: isPremium ?? this.isPremium,
       modules: modules ?? this.modules,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -147,6 +153,7 @@ class CourseUpdate {
   final String? soundUrlOverview;
   final String? soundUrlDetail;
   final bool? locked;
+  final bool? isPremium;
   final Object? modules;
 
   CourseUpdate({
@@ -158,6 +165,7 @@ class CourseUpdate {
     this.soundUrlOverview,
     this.soundUrlDetail,
     this.locked,
+    this.isPremium,
     this.modules,
   });
 
@@ -171,6 +179,7 @@ class CourseUpdate {
       if (soundUrlOverview != null) 'sound_url_overview': soundUrlOverview,
       if (soundUrlDetail != null) 'sound_url_detail': soundUrlDetail,
       if (locked != null) 'locked': locked,
+      if (isPremium != null) 'is_premium': isPremium,
       if (modules != null) 'modules': modules,
       'updated_at': DateTime.now().toIso8601String(),
     };

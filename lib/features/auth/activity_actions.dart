@@ -46,4 +46,23 @@ class ActivityActions {
   static const String stepTypeCreated = 'step_type_created';
   static const String stepTypeUpdated = 'step_type_updated';
   static const String stepTypeDeleted = 'step_type_deleted';
+
+  // Subscription actions
+  static const String subscriptionCancelled  = 'subscription_cancelled';
+  static const String subscriptionExtended   = 'subscription_extended';
+  static const String subscriptionOverridden = 'subscription_plan_overridden';
+
+  // Organisation actions
+  static const String orgCreated  = 'org_created';
+  static const String orgUpdated  = 'org_updated';
+  static const String orgSuspended = 'org_suspended';
+
+  // Org member actions
+  static const String orgMemberInvited = 'org_member_invited';
+  static const String orgMemberRemoved = 'org_member_removed';
+  static const String orgMemberRoleChanged = 'org_member_role_changed';
+
+  // Sponsored grant actions
+  static const String sponsoredGrantsCreated = 'sponsored_grants_created';
+  static const String sponsoredGrantRevoked  = 'sponsored_grant_revoked';
 }

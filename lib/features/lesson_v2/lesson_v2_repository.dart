@@ -20,6 +20,9 @@ abstract class LessonV2Repository {
   /// (including step_type) in a single atomic operation.
   Future<void> publishLesson(String lessonId, List<LessonStepInput> steps);
 
+  /// Flips [is_premium] for the given lesson and returns the updated value.
+  Future<bool> togglePremium(String id, {required bool isPremium});
+
   Future<void> deleteLesson(String id);
   Future<void> reorderLessons(String moduleId, List<String> orderedLessonIds);
   Future<int> countLessons();
@@ -188,6 +191,39 @@ final deleteLessonProvider =
     StateNotifierProvider<DeleteLessonController, AsyncValue<void>>((ref) {
   final repo = ref.watch(lessonV2RepositoryProvider);
   return DeleteLessonController(repo, ref);
+});
+
+// ── Toggle-premium controller ─────────────────────────────────────────────────
+
+class TogglePremiumController extends StateNotifier<AsyncValue<void>> {
+  final LessonV2Repository _repo;
+  final Ref _ref;
+
+  TogglePremiumController(this._repo, this._ref) : super(const AsyncData(null));
+
+  Future<bool> toggle(String lessonId, {required bool newValue}) async {
+    state = const AsyncLoading();
+    try {
+      final result = await _repo.togglePremium(lessonId, isPremium: newValue);
+      await _ref.read(adminActivityRepositoryProvider).log(
+        action: ActivityActions.lessonUpdated,
+        targetType: 'lesson',
+        targetId: lessonId,
+        details: {'is_premium': result},
+      );
+      state = const AsyncData(null);
+      return result;
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+}
+
+final togglePremiumProvider =
+    StateNotifierProvider<TogglePremiumController, AsyncValue<void>>((ref) {
+  final repo = ref.watch(lessonV2RepositoryProvider);
+  return TogglePremiumController(repo, ref);
 });
 
 final lessonsCountProvider = FutureProvider<int>((ref) async {

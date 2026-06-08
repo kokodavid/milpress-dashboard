@@ -103,6 +103,7 @@ class NewLesson {
   final String title;
   final LessonType lessonType;
   final int displayOrder;
+  final bool isPremium;
 
   NewLesson({
     required this.id,
@@ -110,6 +111,7 @@ class NewLesson {
     required this.title,
     required this.lessonType,
     required this.displayOrder,
+    this.isPremium = false,
   });
 
   factory NewLesson.fromMap(Map<String, dynamic> json) {
@@ -121,6 +123,7 @@ class NewLesson {
         (json['lesson_type'] ?? 'letter') as String,
       ),
       displayOrder: (json['display_order'] as int?) ?? 0,
+      isPremium: (json['is_premium'] as bool?) ?? false,
     );
   }
 
@@ -131,7 +134,19 @@ class NewLesson {
       'title': title,
       'lesson_type': lessonType.name,
       'display_order': displayOrder,
+      'is_premium': isPremium,
     };
+  }
+
+  NewLesson copyWith({bool? isPremium}) {
+    return NewLesson(
+      id: id,
+      moduleId: moduleId,
+      title: title,
+      lessonType: lessonType,
+      displayOrder: displayOrder,
+      isPremium: isPremium ?? this.isPremium,
+    );
   }
 }
 
@@ -215,14 +230,16 @@ class NewLessonUpdate {
   final String? title;
   final LessonType? lessonType;
   final int? displayOrder;
+  final bool? isPremium;
 
-  NewLessonUpdate({this.title, this.lessonType, this.displayOrder});
+  NewLessonUpdate({this.title, this.lessonType, this.displayOrder, this.isPremium});
 
   Map<String, dynamic> toUpdateMap() {
     return {
       if (title != null) 'title': title,
       if (lessonType != null) 'lesson_type': lessonType!.name,
       if (displayOrder != null) 'display_order': displayOrder,
+      if (isPremium != null) 'is_premium': isPremium,
     };
   }
 }

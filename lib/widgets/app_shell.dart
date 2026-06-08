@@ -35,6 +35,12 @@ class _AppShellState extends State<AppShell> {
           return 'App Content';
         case '/users':
           return 'Users';
+        case '/subscriptions':
+          return 'Subscriptions';
+        case '/organizations':
+          return 'Organisations';
+        case '/plans':
+          return 'Subscription Plans';
         case '/settings':
           return 'Access and Roles';
         default:

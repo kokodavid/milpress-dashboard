@@ -3,12 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:milpress_dashboard/utils/app_colors.dart';
 
+import '../../lesson_v2/lesson_v2_models.dart';
 import '../../lesson_v2/lesson_v2_repository.dart';
 import 'delete_lesson_dialog.dart';
 import 'edit_lesson_dialog.dart';
 import '../state/lessons_list_controller.dart';
 import 'lesson_steps/step_actions.dart';
 import 'lesson_steps/step_details.dart';
+
+// ── Premium toggle colours ────────────────────────────────────────────────────
+const _kPremiumColor = Color(0xFFE85D04); // matches AppColors.primaryColor
 
 class SelectedLessonDetailPane extends ConsumerWidget {
   const SelectedLessonDetailPane({super.key});
@@ -63,6 +67,13 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                               icon: Icons.category,
                               label: lesson.lessonType.name,
                             ),
+                            const SizedBox(width: 12),
+                            if (lesson.isPremium)
+                              _MetaChip(
+                                icon: Icons.lock_rounded,
+                                label: 'Premium',
+                                color: _kPremiumColor,
+                              ),
                           ],
                         ),
                       ],
@@ -72,6 +83,9 @@ class SelectedLessonDetailPane extends ConsumerWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // ── Premium toggle ──────────────────────────────────
+                      _PremiumToggle(lesson: lesson),
+                      const SizedBox(width: 8),
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.grey.shade100,
@@ -283,33 +297,167 @@ class _EmptyDetailPlaceholder extends StatelessWidget {
 }
 
 class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.icon, required this.label});
+  const _MetaChip({required this.icon, required this.label, this.color});
 
   final IconData icon;
   final String label;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final fg = color ?? Colors.blueGrey.shade700;
+    final bg = color != null
+        ? color!.withOpacity(0.08)
+        : Colors.blueGrey.shade50;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.blueGrey.shade50,
+        color: bg,
         borderRadius: BorderRadius.circular(12),
+        border: color != null
+            ? Border.all(color: color!.withOpacity(0.3))
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.blueGrey.shade700),
+          Icon(icon, size: 14, color: fg),
           const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
-              color: Colors.blueGrey.shade700,
+              color: fg,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// _PremiumToggle — inline switch that flips is_premium on the lesson
+// =============================================================================
+class _PremiumToggle extends ConsumerStatefulWidget {
+  final NewLesson lesson;
+  const _PremiumToggle({required this.lesson});
+
+  @override
+  ConsumerState<_PremiumToggle> createState() => _PremiumToggleState();
+}
+
+class _PremiumToggleState extends ConsumerState<_PremiumToggle> {
+  late bool _value;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = widget.lesson.isPremium;
+  }
+
+  @override
+  void didUpdateWidget(_PremiumToggle old) {
+    super.didUpdateWidget(old);
+    if (old.lesson.id != widget.lesson.id) {
+      _value = widget.lesson.isPremium;
+    }
+  }
+
+  Future<void> _toggle(bool next) async {
+    setState(() {
+      _value = next;
+      _saving = true;
+    });
+    try {
+      await ref
+          .read(togglePremiumProvider.notifier)
+          .toggle(widget.lesson.id, newValue: next);
+      // Refresh the detail pane so the badge and chip update
+      ref.invalidate(lessonByIdProvider(widget.lesson.id));
+      ref.invalidate(lessonsForModuleProvider(widget.lesson.moduleId));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              next
+                  ? '"${widget.lesson.title}" marked as Premium'
+                  : '"${widget.lesson.title}" set to Free',
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Revert on error
+      setState(() => _value = !next);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update premium status: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: _value ? 'Mark as Free' : 'Mark as Premium',
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        decoration: BoxDecoration(
+          color: _value
+              ? _kPremiumColor.withOpacity(0.08)
+              : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: _value
+                ? _kPremiumColor.withOpacity(0.4)
+                : Colors.grey.shade300,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.lock_rounded,
+              size: 15,
+              color: _value ? _kPremiumColor : Colors.grey.shade500,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Premium',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: _value ? _kPremiumColor : Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            _saving
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        _value ? _kPremiumColor : Colors.grey.shade400,
+                      ),
+                    ),
+                  )
+                : Switch.adaptive(
+                    value: _value,
+                    onChanged: _toggle,
+                    activeColor: _kPremiumColor,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+          ],
+        ),
       ),
     );
   }

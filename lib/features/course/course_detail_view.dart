@@ -10,6 +10,8 @@ import 'widgets/custom_chip.dart';
 import '../modules/create_module_form.dart';
 import '../modules/modules_repository.dart';
 
+const _kPremiumColor = Color(0xFFE85D04);
+
 String _fmtDateTime(DateTime dt) {
   final local = dt.toLocal();
   final y = local.year.toString().padLeft(4, '0');
@@ -20,7 +22,7 @@ String _fmtDateTime(DateTime dt) {
   return '$y-$m-$d $hh:$mm';
 }
 
-class CourseDetailView extends ConsumerWidget {
+class CourseDetailView extends ConsumerStatefulWidget {
   final Course course;
   final VoidCallback onRefresh;
   final VoidCallback onDeleted;
@@ -32,7 +34,64 @@ class CourseDetailView extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CourseDetailView> createState() => _CourseDetailViewState();
+}
+
+class _CourseDetailViewState extends ConsumerState<CourseDetailView> {
+  late bool _isPremium;
+  bool _savingPremium = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isPremium = widget.course.isPremium;
+  }
+
+  @override
+  void didUpdateWidget(CourseDetailView old) {
+    super.didUpdateWidget(old);
+    if (old.course.id != widget.course.id) {
+      _isPremium = widget.course.isPremium;
+    }
+  }
+
+  Future<void> _togglePremium(bool next) async {
+    setState(() {
+      _isPremium = next;
+      _savingPremium = true;
+    });
+    try {
+      await ref
+          .read(toggleCoursePremiumProvider.notifier)
+          .toggle(widget.course.id, newValue: next);
+      widget.onRefresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              next
+                  ? '"${widget.course.title}" marked as Premium'
+                  : '"${widget.course.title}" set to Free',
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isPremium = !next);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update premium status: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingPremium = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final course = widget.course;
     final modulesAsync = ref.watch(modulesForCourseProvider(course.id));
     final nextModulePosition = modulesAsync.maybeWhen(
       data: (modules) {
@@ -71,7 +130,72 @@ class CourseDetailView extends ConsumerWidget {
               const SizedBox(width: 12),
               Wrap(
                 spacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  // ── Premium toggle ──────────────────────────────────────
+                  Tooltip(
+                    message: _isPremium ? 'Mark as Free' : 'Mark as Premium',
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      decoration: BoxDecoration(
+                        color: _isPremium
+                            ? _kPremiumColor.withOpacity(0.08)
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _isPremium
+                              ? _kPremiumColor.withOpacity(0.4)
+                              : Colors.grey.shade300,
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.lock_rounded,
+                            size: 15,
+                            color: _isPremium
+                                ? _kPremiumColor
+                                : Colors.grey.shade500,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Premium',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _isPremium
+                                  ? _kPremiumColor
+                                  : Colors.grey.shade600,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          _savingPremium
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      _isPremium
+                                          ? _kPremiumColor
+                                          : Colors.grey.shade400,
+                                    ),
+                                  ),
+                                )
+                              : Switch.adaptive(
+                                  value: _isPremium,
+                                  onChanged: _togglePremium,
+                                  activeColor: _kPremiumColor,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                        ],
+                      ),
+                    ),
+                  ),
                   Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey.shade300),
@@ -103,7 +227,7 @@ class CourseDetailView extends ConsumerWidget {
                                   child: EditCourseForm(
                                     course: course,
                                     onUpdated: () {
-                                      onRefresh();
+                                      widget.onRefresh();
                                     },
                                   ),
                                 ),
@@ -172,7 +296,7 @@ class CourseDetailView extends ConsumerWidget {
                                 const SnackBar(content: Text('Course deleted')),
                               );
                             }
-                            onDeleted();
+                            widget.onDeleted();
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -204,6 +328,33 @@ class CourseDetailView extends ConsumerWidget {
               if (course.updatedAt != null)
                 CustomChip(
                   label: _fmtDateTime(course.updatedAt!).split(' ')[0],
+                ),
+              if (_isPremium)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _kPremiumColor.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: _kPremiumColor.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.lock_rounded,
+                          size: 13, color: _kPremiumColor),
+                      SizedBox(width: 4),
+                      Text(
+                        'Premium',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _kPremiumColor,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
             ],
           ),
@@ -252,7 +403,7 @@ class CourseDetailView extends ConsumerWidget {
                                 ref.invalidate(
                                   modulesForCourseProvider(course.id),
                                 );
-                                onRefresh();
+                                widget.onRefresh();
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(

@@ -10,6 +10,9 @@ import 'features/content/quizzes_list_screen.dart';
 import 'features/assessment_v2/assessment_v2_screen.dart';
 import 'features/content_management/content_management_screen.dart';
 import 'features/lesson_builder/lesson_builder_screen.dart';
+import 'features/subscriptions/subscriptions_screen.dart';
+import 'features/organizations/organizations_screen.dart';
+import 'features/plans/plans_screen.dart';
 import 'widgets/app_shell.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -67,6 +70,18 @@ final GoRouter appRouter = GoRouter(
 				GoRoute(
 					path: '/content',
 					builder: (context, state) => const ContentManagementScreen(),
+				),
+				GoRoute(
+					path: '/subscriptions',
+					builder: (context, state) => const SubscriptionsScreen(),
+				),
+				GoRoute(
+					path: '/organizations',
+					builder: (context, state) => const OrganizationsScreen(),
+				),
+				GoRoute(
+					path: '/plans',
+					builder: (context, state) => const PlansScreen(),
 				),
 			],
 		),

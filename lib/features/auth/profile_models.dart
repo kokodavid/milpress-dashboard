@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../subscriptions/subscription_enums.dart';
+
 @immutable
 class Profile {
   final String id;
@@ -9,6 +11,11 @@ class Profile {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  // Subscription columns added in migration 20260526000000
+  final PlanType planType;
+  final String? orgId;
+  final String? sponsoredBy;
+
   const Profile({
     required this.id,
     this.firstName,
@@ -16,6 +23,9 @@ class Profile {
     this.email,
     this.createdAt,
     this.updatedAt,
+    this.planType = PlanType.free,
+    this.orgId,
+    this.sponsoredBy,
   });
 
   String get fullName {
@@ -31,6 +41,9 @@ class Profile {
       email: map['email'] as String?,
       createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at'] as String) : null,
       updatedAt: map['updated_at'] != null ? DateTime.tryParse(map['updated_at'] as String) : null,
+      planType: PlanType.fromString(map['plan_type'] as String?),
+      orgId: map['org_id'] as String?,
+      sponsoredBy: map['sponsored_by'] as String?,
     );
   }
 }

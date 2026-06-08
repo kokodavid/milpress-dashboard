@@ -154,6 +154,39 @@ final deleteCourseProvider = StateNotifierProvider<DeleteCourseController, Async
   return DeleteCourseController(repo, ref);
 });
 
+// ── Toggle-premium controller ─────────────────────────────────────────────────
+
+class ToggleCoursePremiumController extends StateNotifier<AsyncValue<void>> {
+  final CourseRepository _repo;
+  final Ref _ref;
+
+  ToggleCoursePremiumController(this._repo, this._ref)
+      : super(const AsyncData(null));
+
+  Future<void> toggle(String courseId, {required bool newValue}) async {
+    state = const AsyncLoading();
+    try {
+      await _repo.updateCourse(courseId, CourseUpdate(isPremium: newValue));
+      await _ref.read(adminActivityRepositoryProvider).log(
+        action: ActivityActions.courseUpdated,
+        targetType: 'course',
+        targetId: courseId,
+        details: {'is_premium': newValue},
+      );
+      state = const AsyncData(null);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+}
+
+final toggleCoursePremiumProvider =
+    StateNotifierProvider<ToggleCoursePremiumController, AsyncValue<void>>((ref) {
+  final repo = ref.watch(courseRepositoryProvider);
+  return ToggleCoursePremiumController(repo, ref);
+});
+
 // Query object for flexibility (filtering, sorting, pagination)
 class CoursesQuery {
   final String? search;

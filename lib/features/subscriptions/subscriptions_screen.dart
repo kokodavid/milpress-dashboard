@@ -36,7 +36,9 @@ class SubscriptionsScreen extends ConsumerWidget {
     }
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Left panel: KPIs + list ───────────────────────────────────────
           Expanded(

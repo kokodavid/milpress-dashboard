@@ -37,6 +37,7 @@ class OrganizationsScreen extends ConsumerWidget {
     }
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Row(
         children: [
           // ── Left panel ──────────────────────────────────────────────────
@@ -906,46 +907,36 @@ class _CreateOrgDialogState extends ConsumerState<_CreateOrgDialog> {
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
-              const SizedBox(height: 12),
-              // Type dropdown
-              DropdownButtonFormField<OrgType>(
-                value: _type,
-                decoration:
-                    const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
-                items: OrgType.values
-                    .map((t) => DropdownMenuItem(
-                        value: t, child: Text(t.label)))
-                    .toList(),
-                onChanged: (v) => setState(() => _type = v!),
+              const SizedBox(height: 16),
+              // Type selector
+              _ChipSelector<OrgType>(
+                label: 'Type',
+                values: OrgType.values,
+                selected: _type,
+                labelBuilder: (t) => t.label,
+                onChanged: (v) => setState(() => _type = v),
               ),
-              const SizedBox(height: 12),
-              // Plan dropdown
-              DropdownButtonFormField<OrgPlan>(
-                value: _plan,
-                decoration:
-                    const InputDecoration(labelText: 'Plan', border: OutlineInputBorder()),
-                items: OrgPlan.values
-                    .map((p) => DropdownMenuItem(
-                        value: p,
-                        child: Text(
-                            '${p.label}${p.monthlyPrice != null ? ' — \$${p.monthlyPrice}/mo' : ' — Contact us'}')))
-                    .toList(),
-                onChanged: (v) => setState(() => _plan = v!),
+              const SizedBox(height: 16),
+              // Plan selector
+              _ChipSelector<OrgPlan>(
+                label: 'Plan',
+                values: OrgPlan.values,
+                selected: _plan,
+                labelBuilder: (p) => p.monthlyPrice != null
+                    ? '${p.label} — \$${p.monthlyPrice}/mo'
+                    : '${p.label} — Contact us',
+                onChanged: (v) => setState(() => _plan = v),
               ),
-              const SizedBox(height: 12),
-              // Billing cycle
-              DropdownButtonFormField<BillingCycle>(
-                value: _cycle,
-                decoration: const InputDecoration(
-                    labelText: 'Billing cycle',
-                    border: OutlineInputBorder()),
-                items: BillingCycle.values
-                    .map((c) => DropdownMenuItem(
-                        value: c, child: Text(c.label)))
-                    .toList(),
-                onChanged: (v) => setState(() => _cycle = v!),
+              const SizedBox(height: 16),
+              // Billing cycle selector
+              _ChipSelector<BillingCycle>(
+                label: 'Billing cycle',
+                values: BillingCycle.values,
+                selected: _cycle,
+                labelBuilder: (c) => c.label,
+                onChanged: (v) => setState(() => _cycle = v),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               AppTextFormField(
                 controller: _ownerCtrl,
                 label: 'Owner user ID (optional)',
@@ -1008,6 +999,75 @@ class _CreateOrgDialogState extends ConsumerState<_CreateOrgDialog> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+}
+
+// ── Chip-based selector — clean, modern replacement for dropdown fields ───────
+class _ChipSelector<T> extends StatelessWidget {
+  final String label;
+  final List<T> values;
+  final T selected;
+  final String Function(T) labelBuilder;
+  final ValueChanged<T> onChanged;
+
+  const _ChipSelector({
+    required this.label,
+    required this.values,
+    required this.selected,
+    required this.labelBuilder,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: values.map((value) {
+            final isSelected = value == selected;
+            return GestureDetector(
+              onTap: () => onChanged(value),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOut,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primaryColor.withOpacity(0.12)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primaryColor
+                        : Colors.grey.shade300,
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                ),
+                child: Text(
+                  labelBuilder(value),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected ? AppColors.primaryColor : Colors.grey[800],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
   }
 }
 

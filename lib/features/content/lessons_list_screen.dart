@@ -14,6 +14,7 @@ class LessonsListScreen extends ConsumerWidget {
     final selectedCourse = ref.watch(selectedCourseProvider);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Row(
         children: [
           SizedBox(

@@ -20,6 +20,7 @@ class AssessmentV2Screen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Row(
         children: [
           // Left pane – course selector + levels list

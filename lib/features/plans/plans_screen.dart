@@ -15,6 +15,7 @@ class PlansScreen extends ConsumerWidget {
     final plansAsync = ref.watch(plansListProvider);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: plansAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),

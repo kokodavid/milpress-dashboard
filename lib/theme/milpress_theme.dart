@@ -41,14 +41,14 @@ ThemeData milpressTheme() {
     onSurfaceVariant: Color(0xFF5A6170),
   );
 
-  // Type pairing: Inter for UI (body + labels), Fraunces for display.
+  // Type pairing: Inter for UI (body, labels, and display).
   // JetBrains Mono for snake_case keys and URLs.
   final textTheme = TextTheme(
-    displayLarge: GoogleFonts.fraunces(
+    displayLarge: GoogleFonts.inter(
       fontSize: 40, fontWeight: FontWeight.w600, letterSpacing: -0.6, color: colors.ink),
-    displayMedium: GoogleFonts.fraunces(
+    displayMedium: GoogleFonts.inter(
       fontSize: 28, fontWeight: FontWeight.w600, letterSpacing: -0.4, color: colors.ink),
-    displaySmall: GoogleFonts.fraunces(
+    displaySmall: GoogleFonts.inter(
       fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: -0.3, color: colors.ink),
     headlineSmall: GoogleFonts.inter(
       fontSize: 18, fontWeight: FontWeight.w600, color: colors.ink),

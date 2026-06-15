@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../utils/app_colors.dart';
+import '../../widgets/chip_selector.dart';
 import '../subscriptions/subscription_enums.dart';
 import '../subscriptions/subscriptions_screen.dart' show PlanBadge;
 import 'plan_models.dart';
@@ -608,45 +609,22 @@ class _PlanFormDialogState extends State<_PlanFormDialog> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Plan type + Billing cycle
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<PlanType>(
-                        value: _planType,
-                        decoration: const InputDecoration(
-                          labelText: 'Plan type',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 14),
-                        ),
-                        items: PlanType.values
-                            .map((t) => DropdownMenuItem(
-                                value: t, child: Text(t.label)))
-                            .toList(),
-                        onChanged: (v) =>
-                            setState(() => _planType = v!),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<BillingCycle>(
-                        value: _billingCycle,
-                        decoration: const InputDecoration(
-                          labelText: 'Billing cycle',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 14),
-                        ),
-                        items: BillingCycle.values
-                            .map((c) => DropdownMenuItem(
-                                value: c, child: Text(c.label)))
-                            .toList(),
-                        onChanged: (v) =>
-                            setState(() => _billingCycle = v!),
-                      ),
-                    ),
-                  ],
+                // Plan type selector
+                ChipSelector<PlanType>(
+                  label: 'Plan type',
+                  values: PlanType.values,
+                  selected: _planType,
+                  labelBuilder: (t) => t.label,
+                  onChanged: (v) => setState(() => _planType = v),
+                ),
+                const SizedBox(height: 16),
+                // Billing cycle selector
+                ChipSelector<BillingCycle>(
+                  label: 'Billing cycle',
+                  values: BillingCycle.values,
+                  selected: _billingCycle,
+                  labelBuilder: (c) => c.label,
+                  onChanged: (v) => setState(() => _billingCycle = v),
                 ),
                 const SizedBox(height: 12),
                 // Price

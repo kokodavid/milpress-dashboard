@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/initials.dart';
 import '../../widgets/search_input.dart';
+import '../../widgets/chip_selector.dart';
 import '../../widgets/app_text_form_field.dart';
 import '../../widgets/app_button.dart';
 import '../subscriptions/subscription_enums.dart';
@@ -497,69 +498,107 @@ class _OrgOverviewTab extends StatelessWidget {
 }
 
 // ── Members tab ───────────────────────────────────────────────────────────────
-class _OrgMembersTab extends ConsumerWidget {
+class _OrgMembersTab extends ConsumerStatefulWidget {
   final Organization org;
   const _OrgMembersTab({required this.org});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final membersAsync = ref.watch(orgMembersProvider(org.id));
+  ConsumerState<_OrgMembersTab> createState() => _OrgMembersTabState();
+}
+
+class _OrgMembersTabState extends ConsumerState<_OrgMembersTab> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final membersAsync = ref.watch(orgMembersProvider(widget.org.id));
 
     return membersAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: $e')),
-      data: (members) => Column(
-        children: [
-          // Invite bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Row(
-              children: [
-                Text('${members.length} member(s)',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: Colors.grey[600])),
-                const Spacer(),
-                OutlinedButton.icon(
-                  onPressed: () =>
-                      _showInviteDialog(context, ref, org.id),
-                  icon: const Icon(Icons.person_add_outlined, size: 16),
-                  label: const Text('Invite members',
-                      style: TextStyle(fontSize: 13)),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          // List
-          Expanded(
-            child: members.isEmpty
-                ? const Center(child: Text('No members yet'))
-                : ListView.separated(
-                    padding:
-                        const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                    itemCount: members.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: 6),
-                    itemBuilder: (_, i) {
-                      final m = members[i];
-                      return _MemberTile(
-                        member: m,
-                        onRemove: () async {
-                          await ref
-                              .read(removeMemberProvider.notifier)
-                              .remove(m);
-                          ref.invalidate(orgMembersProvider(org.id));
-                          ref.invalidate(
-                              organizationByIdProvider(org.id));
-                        },
-                      );
-                    },
+      data: (members) {
+        final query = _query.trim().toLowerCase();
+        final filteredMembers = query.isEmpty
+            ? members
+            : members
+                .where((m) =>
+                    m.displayName.toLowerCase().contains(query) ||
+                    m.inviteEmail.toLowerCase().contains(query))
+                .toList();
+
+        return Column(
+          children: [
+            // Invite bar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Text('${members.length} member(s)',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: Colors.grey[600])),
+                  const Spacer(),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        _showInviteDialog(context, ref, widget.org.id),
+                    icon: const Icon(Icons.person_add_outlined, size: 16),
+                    label: const Text('Invite members',
+                        style: TextStyle(fontSize: 13)),
                   ),
-          ),
-        ],
-      ),
+                ],
+              ),
+            ),
+            // Search bar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: SearchInput(
+                hintText: 'Search members by name or email',
+                initialValue: _query,
+                onChanged: (value) => setState(() => _query = value),
+              ),
+            ),
+            const Divider(height: 1),
+            // List
+            Expanded(
+              child: members.isEmpty
+                  ? const Center(child: Text('No members yet'))
+                  : filteredMembers.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No members match "${_query.trim()}"',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: Colors.grey[600]),
+                          ),
+                        )
+                      : ListView.separated(
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                          itemCount: filteredMembers.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 6),
+                          itemBuilder: (_, i) {
+                            final m = filteredMembers[i];
+                            return _MemberTile(
+                              member: m,
+                              onRemove: () async {
+                                await ref
+                                    .read(removeMemberProvider.notifier)
+                                    .remove(m);
+                                ref.invalidate(
+                                    orgMembersProvider(widget.org.id));
+                                ref.invalidate(
+                                    organizationByIdProvider(widget.org.id));
+                              },
+                            );
+                          },
+                        ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -909,7 +948,7 @@ class _CreateOrgDialogState extends ConsumerState<_CreateOrgDialog> {
               ),
               const SizedBox(height: 16),
               // Type selector
-              _ChipSelector<OrgType>(
+              ChipSelector<OrgType>(
                 label: 'Type',
                 values: OrgType.values,
                 selected: _type,
@@ -918,7 +957,7 @@ class _CreateOrgDialogState extends ConsumerState<_CreateOrgDialog> {
               ),
               const SizedBox(height: 16),
               // Plan selector
-              _ChipSelector<OrgPlan>(
+              ChipSelector<OrgPlan>(
                 label: 'Plan',
                 values: OrgPlan.values,
                 selected: _plan,
@@ -929,7 +968,7 @@ class _CreateOrgDialogState extends ConsumerState<_CreateOrgDialog> {
               ),
               const SizedBox(height: 16),
               // Billing cycle selector
-              _ChipSelector<BillingCycle>(
+              ChipSelector<BillingCycle>(
                 label: 'Billing cycle',
                 values: BillingCycle.values,
                 selected: _cycle,
@@ -999,75 +1038,6 @@ class _CreateOrgDialogState extends ConsumerState<_CreateOrgDialog> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-}
-
-// ── Chip-based selector — clean, modern replacement for dropdown fields ───────
-class _ChipSelector<T> extends StatelessWidget {
-  final String label;
-  final List<T> values;
-  final T selected;
-  final String Function(T) labelBuilder;
-  final ValueChanged<T> onChanged;
-
-  const _ChipSelector({
-    required this.label,
-    required this.values,
-    required this.selected,
-    required this.labelBuilder,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: values.map((value) {
-            final isSelected = value == selected;
-            return GestureDetector(
-              onTap: () => onChanged(value),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                curve: Curves.easeOut,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.primaryColor.withOpacity(0.12)
-                      : Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppColors.primaryColor
-                        : Colors.grey.shade300,
-                    width: isSelected ? 1.5 : 1,
-                  ),
-                ),
-                child: Text(
-                  labelBuilder(value),
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected ? AppColors.primaryColor : Colors.grey[800],
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
   }
 }
 

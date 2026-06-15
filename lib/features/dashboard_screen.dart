@@ -1116,7 +1116,7 @@ class _HealthTile extends StatelessWidget {
         children: [
           Text(
             count.toString(),
-            style: GoogleFonts.fraunces(
+            style: GoogleFonts.inter(
                 fontSize: 28,
                 fontWeight: FontWeight.w600,
                 color: numColor,

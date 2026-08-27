@@ -40,11 +40,15 @@ class CourseDetailView extends ConsumerStatefulWidget {
 class _CourseDetailViewState extends ConsumerState<CourseDetailView> {
   late bool _isPremium;
   bool _savingPremium = false;
+  String? _reconciledCourseId;
 
   @override
   void initState() {
     super.initState();
     _isPremium = widget.course.isPremium;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reconcileFreeCourseAccess();
+    });
   }
 
   @override
@@ -52,6 +56,30 @@ class _CourseDetailViewState extends ConsumerState<CourseDetailView> {
     super.didUpdateWidget(old);
     if (old.course.id != widget.course.id) {
       _isPremium = widget.course.isPremium;
+      _reconciledCourseId = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _reconcileFreeCourseAccess();
+      });
+    }
+  }
+
+  Future<void> _reconcileFreeCourseAccess() async {
+    if (!mounted ||
+        _isPremium ||
+        _reconciledCourseId == widget.course.id) {
+      return;
+    }
+
+    _reconciledCourseId = widget.course.id;
+    try {
+      final repaired = await ref
+          .read(toggleCoursePremiumProvider.notifier)
+          .reconcileFreeCourseAccess(widget.course.id);
+      if (repaired > 0) {
+        widget.onRefresh();
+      }
+    } catch (_) {
+      _reconciledCourseId = null;
     }
   }
 

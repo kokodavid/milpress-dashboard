@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milpress_dashboard/features/auth/admin_activity_repository.dart';
 import 'package:milpress_dashboard/features/auth/activity_actions.dart';
 
+import '../lesson_v2/lesson_v2_repository.dart';
 import 'course_models.dart';
 
 // Providers
@@ -166,14 +167,48 @@ class ToggleCoursePremiumController extends StateNotifier<AsyncValue<void>> {
   Future<void> toggle(String courseId, {required bool newValue}) async {
     state = const AsyncLoading();
     try {
-      await _repo.updateCourse(courseId, CourseUpdate(isPremium: newValue));
+      final updatedLessonCount = await _repo.updateCoursePremium(
+        courseId,
+        isPremium: newValue,
+      );
       await _ref.read(adminActivityRepositoryProvider).log(
         action: ActivityActions.courseUpdated,
         targetType: 'course',
         targetId: courseId,
-        details: {'is_premium': newValue},
+        details: {
+          'is_premium': newValue,
+          'lessons_updated': updatedLessonCount,
+        },
       );
+      _ref.invalidate(lessonsForModuleProvider);
       state = const AsyncData(null);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
+
+  Future<int> reconcileFreeCourseAccess(String courseId) async {
+    state = const AsyncLoading();
+    try {
+      final updatedLessonCount = await _repo.updateLessonsPremiumForCourse(
+        courseId,
+        isPremium: false,
+      );
+      if (updatedLessonCount > 0) {
+        await _ref.read(adminActivityRepositoryProvider).log(
+          action: ActivityActions.courseUpdated,
+          targetType: 'course',
+          targetId: courseId,
+          details: {
+            'is_premium': false,
+            'lessons_repaired': updatedLessonCount,
+          },
+        );
+        _ref.invalidate(lessonsForModuleProvider);
+      }
+      state = const AsyncData(null);
+      return updatedLessonCount;
     } catch (e, st) {
       state = AsyncError(e, st);
       rethrow;
@@ -266,6 +301,34 @@ class CourseRepository {
   // Update
   Future<void> updateCourse(String id, CourseUpdate update) async {
     await _client.from(table).update(update.toUpdateMap()).eq('id', id);
+  }
+
+  Future<int> updateCoursePremium(
+    String id, {
+    required bool isPremium,
+  }) async {
+    await updateCourse(id, CourseUpdate(isPremium: isPremium));
+    return updateLessonsPremiumForCourse(id, isPremium: isPremium);
+  }
+
+  Future<int> updateLessonsPremiumForCourse(
+    String id, {
+    required bool isPremium,
+  }) async {
+    final List modules =
+        await _client.from('modules').select('id').eq('course_id', id);
+    if (modules.isEmpty) return 0;
+
+    final moduleIds = modules.map((e) => (e as Map)['id']).toList();
+    final inList = '(${moduleIds.map((id) => '"$id"').join(',')})';
+    final List lessons = await _client
+        .from('new_lessons')
+        .update({'is_premium': isPremium})
+        .filter('module_id', 'in', inList)
+        .neq('is_premium', isPremium)
+        .select('id');
+
+    return lessons.length;
   }
 
   // Delete

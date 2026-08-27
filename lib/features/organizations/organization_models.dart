@@ -36,6 +36,8 @@ class Organization {
 
   int get seatsAvailable => seatLimit == null ? 9999 : seatLimit! - seatsUsed;
   bool get atSeatLimit   => seatLimit != null && seatsUsed >= seatLimit!;
+  bool get isCustomSeatPlan => plan == OrgPlan.enterprise && seatLimit != null;
+  String get planLabel => isCustomSeatPlan ? 'Custom' : plan.label;
 
   /// Seat utilisation 0.0 – 1.0 (always 0 for enterprise)
   double get seatUtilisation =>
@@ -102,6 +104,8 @@ class OrgCreate {
   final String name;
   final OrgType type;
   final OrgPlan plan;
+  final int? customSeatLimit;
+  final double? customMonthlyAmountUsd;
   final String? ownerId;
   final BillingCycle billingCycle;
   final String? notes;
@@ -110,17 +114,20 @@ class OrgCreate {
     required this.name,
     required this.type,
     required this.plan,
+    this.customSeatLimit,
+    this.customMonthlyAmountUsd,
     this.ownerId,
     this.billingCycle = BillingCycle.monthly,
     this.notes,
   });
 
   Map<String, dynamic> toInsertMap() {
+    final seatLimit = customSeatLimit ?? plan.seatLimit;
     return {
       'name': name,
       'type': type.dbValue,
       'plan': plan.dbValue,
-      'seat_limit': plan.seatLimit,
+      'seat_limit': seatLimit,
       'seats_used': 0,
       if (ownerId != null) 'owner_id': ownerId,
       'status': SubStatus.active.dbValue,

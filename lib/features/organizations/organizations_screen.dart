@@ -1,13 +1,17 @@
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/app_colors.dart';
 import '../../utils/initials.dart';
 import '../../widgets/search_input.dart';
 import '../../widgets/chip_selector.dart';
 import '../../widgets/app_text_form_field.dart';
-import '../../widgets/app_button.dart';
 import '../subscriptions/subscription_enums.dart';
 import '../subscriptions/subscriptions_screen.dart' show SubStatusBadge;
 import 'organization_models.dart';
@@ -305,7 +309,7 @@ class _OrgList extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        _OrgPlanBadge(plan: org.plan),
+                        _OrgPlanBadge(plan: org.plan, label: org.planLabel),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -398,9 +402,37 @@ class _OrgDetail extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    _OrgPlanBadge(plan: org.plan, large: true),
+                    _OrgPlanBadge(
+                        plan: org.plan, label: org.planLabel, large: true),
                     const SizedBox(width: 8),
                     SubStatusBadge(status: org.status, large: true),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: 'Open the org portal login in a new tab',
+                      child: OutlinedButton.icon(
+                        onPressed: () => html.window.open(
+                          '${html.window.location.origin}/org-login',
+                          '_blank',
+                        ),
+                        icon: const Icon(Icons.open_in_new, size: 14),
+                        label: const Text('Org Portal'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.copBlue,
+                          side: const BorderSide(color: AppColors.copBlue),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -448,7 +480,7 @@ class _OrgOverviewTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _OrgDetailCard(children: [
-            _OrgDetailRow('Plan', org.plan.label),
+            _OrgDetailRow('Plan', org.planLabel),
             _OrgDetailRow('Type', org.type.label),
             _OrgDetailRow('Status', org.status.label),
             _OrgDetailRow(
@@ -457,12 +489,13 @@ class _OrgOverviewTab extends StatelessWidget {
                   ? '${org.seatsUsed} (unlimited)'
                   : '${org.seatsUsed} / ${org.seatLimit}',
             ),
-            if (org.ownerEmail != null)
-              _OrgDetailRow('Owner', org.ownerEmail!),
+            _OrgOwnerRow(org: org),
             _OrgDetailRow('Created', fmt.format(org.createdAt)),
             if (org.notes != null && org.notes!.isNotEmpty)
               _OrgDetailRow('Notes', org.notes!),
           ]),
+          const SizedBox(height: 16),
+          _InviteAdminButton(org: org),
           // Seat bar
           if (org.seatLimit != null) ...[
             const SizedBox(height: 20),
@@ -904,6 +937,66 @@ class _OrgGrantsTab extends ConsumerWidget {
   }
 }
 
+enum _OrgPlanSelection {
+  starter,
+  growth,
+  enterprise,
+  custom;
+
+  String get label => switch (this) {
+    _OrgPlanSelection.starter    => 'Starter',
+    _OrgPlanSelection.growth     => 'Growth',
+    _OrgPlanSelection.enterprise => 'Enterprise',
+    _OrgPlanSelection.custom     => 'Custom',
+  };
+
+  OrgPlan get orgPlan => switch (this) {
+    _OrgPlanSelection.starter    => OrgPlan.starter,
+    _OrgPlanSelection.growth     => OrgPlan.growth,
+    _OrgPlanSelection.enterprise => OrgPlan.enterprise,
+    _OrgPlanSelection.custom     => OrgPlan.enterprise,
+  };
+
+  int? get includedSeats => switch (this) {
+    _OrgPlanSelection.starter    => OrgPlan.starter.seatLimit,
+    _OrgPlanSelection.growth     => OrgPlan.growth.seatLimit,
+    _OrgPlanSelection.enterprise => null,
+    _OrgPlanSelection.custom     => null,
+  };
+
+  double? get monthlyPrice => switch (this) {
+    _OrgPlanSelection.starter    => OrgPlan.starter.monthlyPrice,
+    _OrgPlanSelection.growth     => OrgPlan.growth.monthlyPrice,
+    _OrgPlanSelection.enterprise => null,
+    _OrgPlanSelection.custom     => null,
+  };
+
+  List<String> get perks => switch (this) {
+    _OrgPlanSelection.starter => const [
+      'Up to 30 learner seats',
+      'Organisation dashboard and member invites',
+      'Sponsored access grants',
+    ],
+    _OrgPlanSelection.growth => const [
+      'Up to 150 learner seats',
+      'Everything in Starter',
+      'Built for multi-classroom or programme teams',
+    ],
+    _OrgPlanSelection.enterprise => const [
+      'Unlimited seats',
+      'Custom contract and billing terms',
+      'Dedicated onboarding and support',
+    ],
+    _OrgPlanSelection.custom => const [
+      'Choose the exact seat limit',
+      'Price updates before the organisation is created',
+      'Billed as a custom enterprise allocation',
+    ],
+  };
+}
+
+const double _customSeatMonthlyRateUsd = 4.67;
+
 // ── Create org dialog ─────────────────────────────────────────────────────────
 class _CreateOrgDialog extends ConsumerStatefulWidget {
   const _CreateOrgDialog();
@@ -916,7 +1009,8 @@ class _CreateOrgDialogState extends ConsumerState<_CreateOrgDialog> {
   final _nameCtrl = TextEditingController();
   final _ownerCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
-  OrgPlan _plan = OrgPlan.starter;
+  final _customSeatsCtrl = TextEditingController(text: '200');
+  _OrgPlanSelection _planSelection = _OrgPlanSelection.starter;
   OrgType _type = OrgType.school;
   BillingCycle _cycle = BillingCycle.monthly;
   bool _loading = false;
@@ -926,7 +1020,33 @@ class _CreateOrgDialogState extends ConsumerState<_CreateOrgDialog> {
     _nameCtrl.dispose();
     _ownerCtrl.dispose();
     _notesCtrl.dispose();
+    _customSeatsCtrl.dispose();
     super.dispose();
+  }
+
+  int get _customSeats => int.tryParse(_customSeatsCtrl.text.trim()) ?? 0;
+
+  double get _customMonthlyAmount => _customSeats * _customSeatMonthlyRateUsd;
+
+  double? get _selectedMonthlyAmount =>
+      _planSelection == _OrgPlanSelection.custom
+          ? _customMonthlyAmount
+          : _planSelection.monthlyPrice;
+
+  String _formatMoney(double value) {
+    final formatter = NumberFormat.currency(symbol: r'$', decimalDigits: 2);
+    return formatter.format(value);
+  }
+
+  String get _selectedPriceLabel {
+    final monthly = _selectedMonthlyAmount;
+    if (monthly == null) return 'Contact us';
+
+    if (_cycle == BillingCycle.annual) {
+      return '${_formatMoney(monthly * 12 * 0.85)}/yr';
+    }
+
+    return '${_formatMoney(monthly)}/mo';
   }
 
   @override
@@ -934,58 +1054,92 @@ class _CreateOrgDialogState extends ConsumerState<_CreateOrgDialog> {
     return AlertDialog(
       title: const Text('Create Organisation'),
       content: SizedBox(
-        width: 480,
+        width: 520,
         child: Form(
           key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppTextFormField(
-                controller: _nameCtrl,
-                label: 'Organisation name',
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              // Type selector
-              ChipSelector<OrgType>(
-                label: 'Type',
-                values: OrgType.values,
-                selected: _type,
-                labelBuilder: (t) => t.label,
-                onChanged: (v) => setState(() => _type = v),
-              ),
-              const SizedBox(height: 16),
-              // Plan selector
-              ChipSelector<OrgPlan>(
-                label: 'Plan',
-                values: OrgPlan.values,
-                selected: _plan,
-                labelBuilder: (p) => p.monthlyPrice != null
-                    ? '${p.label} — \$${p.monthlyPrice}/mo'
-                    : '${p.label} — Contact us',
-                onChanged: (v) => setState(() => _plan = v),
-              ),
-              const SizedBox(height: 16),
-              // Billing cycle selector
-              ChipSelector<BillingCycle>(
-                label: 'Billing cycle',
-                values: BillingCycle.values,
-                selected: _cycle,
-                labelBuilder: (c) => c.label,
-                onChanged: (v) => setState(() => _cycle = v),
-              ),
-              const SizedBox(height: 16),
-              AppTextFormField(
-                controller: _ownerCtrl,
-                label: 'Owner user ID (optional)',
-              ),
-              const SizedBox(height: 12),
-              AppTextFormField(
-                controller: _notesCtrl,
-                label: 'Internal notes (optional)',
-              ),
-            ],
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppTextFormField(
+                  controller: _nameCtrl,
+                  label: 'Organisation name',
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                ChipSelector<OrgType>(
+                  label: 'Type',
+                  values: OrgType.values,
+                  selected: _type,
+                  labelBuilder: (t) => t.label,
+                  onChanged: (v) => setState(() => _type = v),
+                ),
+                const SizedBox(height: 16),
+                ChipSelector<_OrgPlanSelection>(
+                  label: 'Plan',
+                  values: _OrgPlanSelection.values,
+                  selected: _planSelection,
+                  labelBuilder: (p) => p.monthlyPrice != null
+                      ? '${p.label} - ${_formatMoney(p.monthlyPrice!)}/mo'
+                      : p.label,
+                  onChanged: (v) => setState(() => _planSelection = v),
+                ),
+                const SizedBox(height: 12),
+                if (_planSelection == _OrgPlanSelection.custom) ...[
+                  TextFormField(
+                    controller: _customSeatsCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: 'Custom seats',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) {
+                      if (_planSelection != _OrgPlanSelection.custom) {
+                        return null;
+                      }
+                      final seats = int.tryParse(v?.trim() ?? '');
+                      if (seats == null || seats < 1) {
+                        return 'Enter at least 1 seat';
+                      }
+                      return null;
+                    },
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                _SelectedPlanSummary(
+                  selection: _planSelection,
+                  seats: _planSelection == _OrgPlanSelection.custom
+                      ? _customSeats
+                      : _planSelection.includedSeats,
+                  priceLabel: _selectedPriceLabel,
+                  annualDiscountApplied: _cycle == BillingCycle.annual &&
+                      _selectedMonthlyAmount != null,
+                  customRateLabel:
+                      '${_formatMoney(_customSeatMonthlyRateUsd)}/seat/mo',
+                ),
+                const SizedBox(height: 16),
+                ChipSelector<BillingCycle>(
+                  label: 'Billing cycle',
+                  values: BillingCycle.values,
+                  selected: _cycle,
+                  labelBuilder: (c) => c.label,
+                  onChanged: (v) => setState(() => _cycle = v),
+                ),
+                const SizedBox(height: 16),
+                AppTextFormField(
+                  controller: _ownerCtrl,
+                  label: 'Owner user ID (optional)',
+                ),
+                const SizedBox(height: 12),
+                AppTextFormField(
+                  controller: _notesCtrl,
+                  label: 'Internal notes (optional)',
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1014,7 +1168,13 @@ class _CreateOrgDialogState extends ConsumerState<_CreateOrgDialog> {
       final input = OrgCreate(
         name: _nameCtrl.text.trim(),
         type: _type,
-        plan: _plan,
+        plan: _planSelection.orgPlan,
+        customSeatLimit: _planSelection == _OrgPlanSelection.custom
+            ? _customSeats
+            : null,
+        customMonthlyAmountUsd: _planSelection == _OrgPlanSelection.custom
+            ? _customMonthlyAmount
+            : null,
         ownerId:
             _ownerCtrl.text.trim().isEmpty ? null : _ownerCtrl.text.trim(),
         billingCycle: _cycle,
@@ -1038,6 +1198,101 @@ class _CreateOrgDialogState extends ConsumerState<_CreateOrgDialog> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+}
+
+class _SelectedPlanSummary extends StatelessWidget {
+  final _OrgPlanSelection selection;
+  final int? seats;
+  final String priceLabel;
+  final bool annualDiscountApplied;
+  final String customRateLabel;
+
+  const _SelectedPlanSummary({
+    required this.selection,
+    required this.seats,
+    required this.priceLabel,
+    required this.annualDiscountApplied,
+    required this.customRateLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final seatLabel = seats == null ? 'Unlimited seats' : '$seats seats';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.faintGrey,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  selection.label,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+              Text(
+                priceLabel,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppColors.primaryColor,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            selection == _OrgPlanSelection.custom
+                ? '$seatLabel at $customRateLabel'
+                : seatLabel,
+            style: const TextStyle(fontSize: 12, color: AppColors.grey),
+          ),
+          if (annualDiscountApplied) ...[
+            const SizedBox(height: 4),
+            const Text(
+              'Annual billing includes the 15% discount.',
+              style: TextStyle(fontSize: 12, color: AppColors.grey),
+            ),
+          ],
+          const SizedBox(height: 12),
+          ...selection.perks.map(
+            (perk) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 5),
+                    child: Icon(
+                      Icons.check_circle,
+                      size: 14,
+                      color: AppColors.successColor,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      perk,
+                      style: const TextStyle(fontSize: 12, height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1281,8 +1536,9 @@ class _CreateGrantsDialogState
 // ── Shared helpers ────────────────────────────────────────────────────────────
 class _OrgPlanBadge extends StatelessWidget {
   final OrgPlan plan;
+  final String? label;
   final bool large;
-  const _OrgPlanBadge({required this.plan, this.large = false});
+  const _OrgPlanBadge({required this.plan, this.label, this.large = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1296,11 +1552,288 @@ class _OrgPlanBadge extends StatelessWidget {
           horizontal: large ? 10 : 7, vertical: large ? 4 : 2),
       decoration: BoxDecoration(
           color: bg, borderRadius: BorderRadius.circular(20)),
-      child: Text(plan.label,
+      child: Text(label ?? plan.label,
           style: TextStyle(
               fontSize: large ? 12 : 10,
               fontWeight: FontWeight.w700,
               color: fg)),
+    );
+  }
+}
+
+// ── Owner row with "Set Owner" button ─────────────────────────────────────────
+class _OrgOwnerRow extends ConsumerWidget {
+  final Organization org;
+  const _OrgOwnerRow({required this.org});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              'Owner',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
+          ),
+          Expanded(
+            child: org.ownerEmail != null
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          org.ownerEmail!,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () =>
+                            _showSetOwnerDialog(context, ref, org),
+                        icon: const Icon(Icons.swap_horiz, size: 14),
+                        label: const Text('Change', style: TextStyle(fontSize: 12)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.blueGrey,
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Text(
+                        'No owner set',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: Colors.grey[400]),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: () =>
+                            _showSetOwnerDialog(context, ref, org),
+                        icon: const Icon(Icons.person_add_outlined, size: 14),
+                        label: const Text(
+                          'Set Owner',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primaryColor,
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSetOwnerDialog(
+      BuildContext context, WidgetRef ref, Organization org) {
+    showDialog(
+      context: context,
+      builder: (_) => _SetOwnerDialog(org: org),
+    ).then((_) {
+      ref.invalidate(organizationByIdProvider(org.id));
+      ref.invalidate(organizationsListProvider(null));
+    });
+  }
+}
+
+class _SetOwnerDialog extends ConsumerStatefulWidget {
+  final Organization org;
+  const _SetOwnerDialog({required this.org});
+
+  @override
+  ConsumerState<_SetOwnerDialog> createState() => _SetOwnerDialogState();
+}
+
+class _SetOwnerDialogState extends ConsumerState<_SetOwnerDialog> {
+  final _emailController = TextEditingController(text: '');
+  bool _isLoading = false;
+  String? _error;
+  String? _success;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final email = _emailController.text.trim().toLowerCase();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error = 'Enter a valid email address.');
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _success = null;
+    });
+    try {
+      // Resolve the user ID from profiles by email
+      final List profileRows = await Supabase.instance.client
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .limit(1);
+
+      if (profileRows.isEmpty) {
+        setState(() {
+          _error = 'No user account found for "$email". '
+              'The user must have a MilPress account first.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final userId = profileRows.first['id'] as String;
+
+      await ref.read(updateOrganizationProvider.notifier).update(
+            widget.org.id,
+            OrgUpdate(ownerId: userId),
+            widget.org,
+          );
+
+      // Also ensure they're an admin member of the org
+      await ref.read(inviteMembersProvider.notifier).invite(
+        widget.org.id,
+        [email],
+        role: MemberRole.admin,
+      );
+
+      setState(() {
+        _success = 'Owner set to $email. '
+            'They can now log in at /org-login.';
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Failed: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.org.ownerEmail != null
+                          ? 'Change Organization Owner'
+                          : 'Set Organization Owner',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'The owner will be able to log in at /org-login and manage '
+                '${widget.org.name}. They must already have a MilPress account.',
+                style: const TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  labelText: 'Owner Email Address',
+                  hintText: 'owner@organization.com',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE8E8),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFFC43B3B)),
+                  ),
+                ),
+              ],
+              if (_success != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4F3EC),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    _success!,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF2E7D5B)),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.copBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      _isLoading ? 'Saving…' : 'Set Owner',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1380,6 +1913,252 @@ class _EmptyOrgDetail extends StatelessWidget {
           textAlign: TextAlign.center,
           style: TextStyle(
               fontSize: 15, color: Colors.black54, height: 1.5),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Invite Admin button ───────────────────────────────────────────────────────
+class _InviteAdminButton extends StatelessWidget {
+  final Organization org;
+  const _InviteAdminButton({required this.org});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: () => showDialog(
+        context: context,
+        builder: (_) => _InviteAdminDialog(org: org),
+      ),
+      icon: const Icon(Icons.person_add_outlined, size: 16),
+      label: const Text('Invite Org Admin'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.copBlue,
+        side: const BorderSide(color: AppColors.copBlue),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+}
+
+// ── Invite Admin dialog ───────────────────────────────────────────────────────
+class _InviteAdminDialog extends StatefulWidget {
+  final Organization org;
+  const _InviteAdminDialog({required this.org});
+
+  @override
+  State<_InviteAdminDialog> createState() => _InviteAdminDialogState();
+}
+
+class _InviteAdminDialogState extends State<_InviteAdminDialog> {
+  final _emailController = TextEditingController();
+  bool _isLoading = false;
+  String? _error;
+  String? _success;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _invite() async {
+    final email = _emailController.text.trim().toLowerCase();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error = 'Enter a valid email address.');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _success = null;
+    });
+
+    try {
+      final origin = html.window.location.origin;
+      final response = await Supabase.instance.client.functions.invoke(
+        'invite-org-admin',
+        body: {
+          'email': email,
+          'orgId': widget.org.id,
+          'orgPortalUrl': '$origin/#/org-login',
+        },
+      );
+
+      if (response.status != 200) {
+        final body = response.data;
+        final msg = (body is Map ? body['error'] as String? : null) ??
+            'Invite failed (${response.status})';
+        setState(() {
+          _error = msg;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final created = (response.data is Map)
+          ? (response.data['created'] as bool? ?? false)
+          : false;
+
+      setState(() {
+        _success = created
+            ? 'Account created and invite sent to $email.'
+            : 'Admin access granted and invite sent to $email.';
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Failed: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Invite Admin — ${widget.org.name}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'An account will be created automatically if this email '
+                'isn\'t registered yet. A temporary password will be sent '
+                'to them via email.',
+                style: TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              const SizedBox(height: 16),
+
+              // Email field
+              TextField(
+                controller: _emailController,
+                enabled: _success == null,
+                decoration: InputDecoration(
+                  labelText: 'Email Address',
+                  hintText: 'admin@organization.com',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _success == null ? _invite() : null,
+              ),
+
+              // Error
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE8E8),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFFC43B3B)),
+                  ),
+                ),
+              ],
+
+              // Success
+              if (_success != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4F3EC),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline,
+                          size: 16, color: Color(0xFF2E7D5B)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _success!,
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF2E7D5B)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 16),
+
+              // Action buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      _success != null ? 'Done' : 'Cancel',
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                  ),
+                  if (_success == null) ...[
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _invite,
+                      icon: _isLoading
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.send_outlined, size: 16),
+                      label: Text(_isLoading ? 'Sending…' : 'Send Invite'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.copBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -99,16 +99,18 @@ class OrganizationRepository {
       Map<String, dynamic>.from(orgData.first as Map),
     );
 
-    // 2. Insert the billing record (skip for enterprise — billed manually)
-    if (org.plan != OrgPlan.enterprise) {
+    final monthlyAmount = input.customMonthlyAmountUsd ?? org.plan.monthlyPrice;
+
+    // 2. Insert the billing record (skip only manual enterprise billing)
+    if (monthlyAmount != null) {
       await _client.from(orgSubsTable).insert({
         'org_id': org.id,
         'plan': org.plan.dbValue,
         'status': SubStatus.active.dbValue,
         'billing_cycle': billingCycle.dbValue,
         'amount_usd': billingCycle == BillingCycle.annual
-            ? (org.plan.monthlyPrice! * 12 * 0.85) // 15% annual discount
-            : org.plan.monthlyPrice,
+            ? (monthlyAmount * 12 * 0.85) // 15% annual discount
+            : monthlyAmount,
         'current_period_start': DateTime.now().toIso8601String(),
         'current_period_end': billingCycle == BillingCycle.annual
             ? DateTime.now().add(const Duration(days: 365)).toIso8601String()
